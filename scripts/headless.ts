@@ -59,7 +59,7 @@ for (let t = 1; t <= ticks; t++) {
 const rows = w.history.rows; const k = Math.max(1, Math.floor(rows.length * 0.1));
 const avg = (a: number[][], c: number) => a.reduce((s, r) => s + r[c], 0) / a.length;
 say('## 형질 평균 (초기 10% 구간 → 마지막 10% 구간, 개체 간 표준편차 대비 이동)');
-for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'aq', 'brain']) {
+for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'aq', 'long', 'brain']) {
   const c = col('m_' + name), s = col('s_' + name);
   const a = avg(rows.slice(0, k), c), b = avg(rows.slice(-k), c), sd = avg(rows.slice(-k), s) || 1e-9;
   say(`${name.padEnd(6)} ${a.toFixed(3)} → ${b.toFixed(3)}  (Δ=${(b - a).toFixed(3)}, ${((b - a) / sd).toFixed(2)}σ)`);
@@ -67,7 +67,7 @@ for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt'
 const totCost = w.cumCosts.reduce((a, b) => a + b, 0) || 1;
 say('## 누적 대사 비용 비율: ' + COST_NAMES.map((n, i) => `${n} ${(100 * w.cumCosts[i] / totCost).toFixed(1)}%`).join(', '));
 say(`## 요약 maxPop=${maxPop} minPop(>500)=${minPop} final=${w.inds.length} restarts=${w.cnt.restarts} births=${w.cnt.births} (유성 ${w.cnt.sexBirths}) 에너지장부 최대오차=${maxDrift.toExponential(2)}`);
-say(`## 사망: 아사 ${w.cnt.starved} 피식 ${w.cnt.eaten} 질병 ${w.cnt.disease} 운석 ${w.cnt.meteor}`);
+say(`## 사망: 아사 ${w.cnt.starved} 피식 ${w.cnt.eaten} 질병 ${w.cnt.disease} 운석 ${w.cnt.meteor} 노화 ${w.cnt.aged} 극한기온 ${w.cnt.tempDeaths} 서식지부적합 ${w.cnt.habitat}`);
 const liveA = w.spA.filter((s) => s.died < 0 && s.count >= 8).length, liveB = w.spB.filter((s) => s.died < 0 && s.count >= 8).length;
 say(`## 종(클러스터) ${liveA}, 교배집단 ${liveB}, 누적 클러스터종 ${w.spA.length}`);
 say(`## checksum ${w.checksum()}  elapsed ${((Date.now() - t0) / 1000).toFixed(0)}s`);

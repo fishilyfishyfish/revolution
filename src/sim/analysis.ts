@@ -21,11 +21,12 @@ export const STAT_TRAITS: StatTrait[] = [
   { key: 'sex', name: '유성 성향', lo: 0, hi: 1, get: (t) => t.sex },
   { key: 'mut', name: '돌연변이율', lo: 0.003, hi: 0.15, get: (t) => t.mut },
   { key: 'aq', name: '수생 적응', lo: 0, hi: 1, get: (t) => t.aq },
+  { key: 'long', name: '수명(틱)', lo: 400, hi: 3000, get: (t) => t.lifespan },
   { key: 'brain', name: '뇌 가중치 |w| 평균', lo: 0, hi: 3, get: (t, i) => { let s = 0; for (let k = 0; k < NB; k++) s += Math.abs(i.genome[BO + k]); return s / NB; } },
 ];
 const NBIN = 24;
 
-export const STAT_COLS = ['tick', 'pop', 'births', 'sexBirths', 'starved', 'eaten', 'disease', 'meteor', 'matings', 'restarts',
+export const STAT_COLS = ['tick', 'pop', 'births', 'sexBirths', 'starved', 'eaten', 'disease', 'meteor', 'aged', 'tempDeaths', 'habitat', 'matings', 'restarts',
   'plants', 'soil', 'corpse', 'bodies', 'cumIn', 'cumOut', 'nA', 'nB', 'infected',
   ...STAT_TRAITS.map((t) => 'm_' + t.key), ...STAT_TRAITS.map((t) => 's_' + t.key)];
 
@@ -52,7 +53,7 @@ export function recordStats(w: World) {
   for (const sp of w.spA) if (sp.died < 0 && sp.count >= MIN_SPECIES) nA++;
   for (const sp of w.spB) if (sp.died < 0 && sp.count >= MIN_SPECIES) nB++;
   const c = w.cnt;
-  const row = [w.tick, n, c.births, c.sexBirths, c.starved, c.eaten, c.disease, c.meteor, c.matings, c.restarts,
+  const row = [w.tick, n, c.births, c.sexBirths, c.starved, c.eaten, c.disease, c.meteor, c.aged, c.tempDeaths, c.habitat, c.matings, c.restarts,
     e.plants, e.soil, e.corpse, e.bodies, w.cumIn, w.cumOut, nA, nB, infected];
   for (let k = 0; k < STAT_TRAITS.length; k++) row.push(n ? m[k] / n : 0);
   for (let k = 0; k < STAT_TRAITS.length; k++) row.push(n ? Math.sqrt(Math.max(0, s2[k] / n - (m[k] / n) ** 2)) : 0);

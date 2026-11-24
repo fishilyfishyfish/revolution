@@ -53,7 +53,7 @@ export function deserialize(s: Snapshot): World {
   s.plants.forEach((p, k) => w.plants[k].set(p)); w.soil.set(s.soil); w.corpse.set(s.corpse);
   w.lineage = Lineage.unpack(s.lineage);
   Object.assign(w, s.env);
-  w.cumIn = s.ledger.cumIn; w.cumOut = s.ledger.cumOut; w.cumCosts.set(s.ledger.cumCosts); w.cnt = { ...s.ledger.cnt };
+  w.cumIn = s.ledger.cumIn; w.cumOut = s.ledger.cumOut; w.cumCosts.set(s.ledger.cumCosts); w.cnt = { ...w.cnt, ...s.ledger.cnt };
   const unSp = (a: any[]): SpeciesRec[] => a.map((x) => ({ ...x, centroid: x.centroid ? new Float32Array(x.centroid) : null }));
   w.spA = unSp(s.spA); w.nextSpA = s.nextSpA; w.spB = unSp(s.spB); w.nextSpB = s.nextSpB;
   w.log = structuredClone(s.log); w.pending = structuredClone(s.pending); w.events = structuredClone(s.events);

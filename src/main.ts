@@ -265,7 +265,7 @@ function drawCharts() {
     lineChart($('cEnergy') as HTMLCanvasElement, [{ label: '식물', color: COL[2], x, y: colv('plants') }, { label: '개체', color: COL[0], x, y: colv('bodies') }, { label: '사체', color: COL[3], x, y: colv('corpse') }, { label: '토양', color: COL[1], x, y: colv('soil') }], { title: '에너지 저장량 (식물·개체·사체·토양)', markers: mk, ymin: 0 });
     if (st) {
       barChart($('cCost') as HTMLCanvasElement, COST_NAMES, st.costs, COL, '누적 대사 열손실 구성');
-      const e = st.energy; $('ledger').textContent = `장부: 누적 유입(햇빛) ${e.cumIn.toFixed(0)} − 누적 유출(열) ${e.cumOut.toFixed(0)} · 총량 ${e.total.toFixed(0)} · 출생 ${st.cnt.births} (유성 ${st.cnt.sexBirths}) · 사망 아사 ${st.cnt.starved}/피식 ${st.cnt.eaten}/질병 ${st.cnt.disease}/운석 ${st.cnt.meteor} · 재시작 ${st.cnt.restarts}`;
+      const e = st.energy; $('ledger').textContent = `장부: 누적 유입(햇빛) ${e.cumIn.toFixed(0)} − 누적 유출(열) ${e.cumOut.toFixed(0)} · 총량 ${e.total.toFixed(0)} · 출생 ${st.cnt.births} (유성 ${st.cnt.sexBirths}) · 사망 아사 ${st.cnt.starved}/피식 ${st.cnt.eaten}/질병 ${st.cnt.disease}/운석 ${st.cnt.meteor}/노화 ${st.cnt.aged}/기온 ${st.cnt.tempDeaths}/서식지 ${st.cnt.habitat} · 재시작 ${st.cnt.restarts}`;
     }
   } else if (tab === 'tab-species' && st) {
     lineChart($('cSpN') as HTMLCanvasElement, [{ label: '(a) 게놈 클러스터', color: COL[0], x, y: colv('nA') }, { label: '(b) 교배 가능 집단', color: COL[1], x, y: colv('nB'), dash: [4, 3] }], { title: `종 수 추이 (개체 ${MIN_SPECIES}+ 만 집계)`, markers: mk, ymin: 0 });

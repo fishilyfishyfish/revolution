@@ -71,7 +71,7 @@ export class World {
   costs = new Float64Array(7);
   cumCosts = new Float64Array(7);
   // 카운터 (누적)
-  cnt = { births: 0, sexBirths: 0, asexBirths: 0, starved: 0, eaten: 0, disease: 0, meteor: 0, matings: 0, matingFails: 0, restarts: 0 };
+  cnt = { births: 0, sexBirths: 0, asexBirths: 0, starved: 0, eaten: 0, disease: 0, meteor: 0, aged: 0, tempDeaths: 0, habitat: 0, matings: 0, matingFails: 0, restarts: 0 };
   // 종
   spA: SpeciesRec[] = []; nextSpA = 0; spB: SpeciesRec[] = []; nextSpB = 0;
   // 개입/이벤트
@@ -312,6 +312,9 @@ export class World {
     else if (cause === CAUSE.EATEN) this.cnt.eaten++;
     else if (cause === CAUSE.DISEASE) this.cnt.disease++;
     else if (cause === CAUSE.METEOR) this.cnt.meteor++;
+    else if (cause === CAUSE.AGE) this.cnt.aged++;
+    else if (cause === CAUSE.TEMP) this.cnt.tempDeaths++;
+    else if (cause === CAUSE.HABITAT) this.cnt.habitat++;
   }
 
   private pay(ind: Ind, amount: number, kind: number) {
@@ -327,9 +330,15 @@ export class World {
   private spawnChild(pa: Ind, pb: Ind | null, g: Float32Array, tc: Traits, childRes: number) {
     const c = new Ind();
     c.genome = g.slice(); c.t.decode(c.genome, this.cfg);
-    const ang = this.rng.next() * TAU;
-    c.x = Math.min(this.w - 0.001, Math.max(0, pa.x + Math.cos(ang) * 0.6));
-    c.y = Math.min(this.h - 0.001, Math.max(0, pa.y + Math.sin(ang) * 0.6));
+    // 부모와 같은 종류의 지형 셀에 태어난다 (물가에서 새끼가 뭍으로 떨어지지 않게)
+    const pt = this.terrain[this.cellOf(pa.x, pa.y)];
+    c.x = pa.x; c.y = pa.y;
+    for (let k = 0; k < 6; k++) {
+      const ang = this.rng.next() * TAU;
+      const nx = Math.min(this.w - 0.001, Math.max(0, pa.x + Math.cos(ang) * 0.6));
+      const ny = Math.min(this.h - 0.001, Math.max(0, pa.y + Math.sin(ang) * 0.6));
+      if (this.terrain[this.cellOf(nx, ny)] === pt) { c.x = nx; c.y = ny; break; }
+    }
     c.a = this.rng.next() * TAU;
     c.structE = c.t.structE; c.reserve = childRes;
     c.species = pa.species; c.speciesB = pa.speciesB; c.birth = this.tick;
@@ -562,6 +571,7 @@ export class World {
       this.costs[3] += therm * f; this.costs[4] += t.brainCost * f; this.costs[6] += extra * f;
     }
     if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
+    if (this.mortality(ind, terr, dT)) return;
 
     // 먹기/공격
     if (ind.oBite > 0) {
@@ -579,6 +589,19 @@ export class World {
     }
     if (ind.rec > 0) ind.rec = ind.mated ? 0 : ind.rec - 1;
     if (ind.reserve <= 0) this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED);
+  }
+
+  // 에너지와 무관한 사망 요인 (사망 시 몸은 전부 사체로 남아 에너지는 보존된다)
+  private mortality(ind: Ind, terr: number, dT: number): boolean {
+    const cfg = this.cfg, t = ind.t, rng = this.rng;
+    let h = 0, cause = 0;
+    if (ind.age > t.lifespan) { const x = (ind.age - t.lifespan) / t.lifespan; const p = Math.min(1, cfg.ageHazard * x * x); h = p; cause = CAUSE.AGE; }
+    const ex = Math.abs(dT) - cfg.tempTol;
+    if (ex > 0) { const p = Math.min(1, cfg.tempHazard * ex); if (p > h) { h = p; cause = CAUSE.TEMP; } }
+    if (terr === T_PLAIN && t.aq > 0.3) { const p = cfg.landHazard * (t.aq - 0.3) / 0.7; if (p > h) { h = p; cause = CAUSE.HABITAT; } }
+    else if (terr === T_WATER && t.aq < 0.7) { const p = cfg.waterHazard * (0.7 - t.aq) / 0.7; if (p > h) { h = p; cause = CAUSE.HABITAT; } }
+    if (h > 0 && rng.next() < h) { this.kill(ind, cause); return true; }
+    return false;
   }
 
   private bite(ind: Ind) {

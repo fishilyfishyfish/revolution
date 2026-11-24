@@ -8,9 +8,9 @@ export const W1 = 0, B1 = NIN * NH, W2 = B1 + NH, B2 = W2 + NH * NOUT, NB = B2 +
 // ── 게놈 레이아웃: [형질 16개][뇌 가중치 173개] ──
 export const GENE = {
   SIZE: 0, VMAX: 1, VIS: 2, ANG: 3, D0: 4, D1: 5, D2: 6, DM: 7, TOPT: 8, RES: 9,
-  THR: 10, GIVE: 11, SEX: 12, MUT: 13, HUE: 14, OSC: 15, AQ: 16,
+  THR: 10, GIVE: 11, SEX: 12, MUT: 13, HUE: 14, OSC: 15, AQ: 16, LONG: 17,
 } as const;
-export const NT = 17;
+export const NT = 18;
 export const BO = NT;
 export const G = NT + NB;
 export const TAU = Math.PI * 2;
@@ -19,7 +19,7 @@ export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '
   '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자'];
 export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호'];
 export const TRAIT_NAMES = ['몸 크기', '최대 속도', '시야 거리', '시야 각도', '식물A 소화', '식물B 소화', '식물C 소화',
-  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응'];
+  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응', '수명'];
 
 const c01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -30,7 +30,7 @@ export class Traits {
   tOpt = 0; res = 0; thr = 0; give = 0; sex = 0; mut = 0; hue = 0; osc = 0;
   maxReserve = 0; structE = 0; m075 = 0; basal = 0; visCost = 0; brainCost = 0;
   turnMax = 0; biteCap = 0; attackPow = 0; foodThr = 0;
-  aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
+  lifespan = 0; aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
 
   decode(g: Float32Array, cfg: Config): this {
     this.size = 0.5 + 2.5 * c01(g[GENE.SIZE]);
@@ -59,11 +59,13 @@ export class Traits {
     let wa = 0;
     for (let i = 0; i < NB; i++) wa += Math.abs(g[BO + i]);
     wa /= NB;
+    const lg = c01(g[GENE.LONG]);
+    this.lifespan = 400 + 2600 * lg; // 이 나이를 넘기면 노화 사망 위험이 생긴다. 길수록 유지비↑
     const m075 = Math.pow(this.mass, 0.75);
     this.m075 = m075;
     this.maxReserve = cfg.kStore * this.mass;
     this.structE = cfg.kStruct * this.mass;
-    this.basal = cfg.cBasal * m075 * (1 + cfg.cRes * this.res) * (1 + cfg.cRepair * (1 - gm));
+    this.basal = cfg.cBasal * m075 * (1 + cfg.cRes * this.res) * (1 + cfg.cRepair * (1 - gm)) * (1 + cfg.cLong * lg);
     this.visCost = cfg.cVision * 0.5 * this.vis * this.vis * this.ang;
     this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
     this.turnMax = cfg.turnK / this.size;
@@ -82,7 +84,7 @@ export function founderBrain(rng: Rng): Float32Array {
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.6)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
-  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05];
+  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.6;

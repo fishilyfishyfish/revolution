@@ -105,3 +105,31 @@ describe('시작 생물종 프리셋 / 수중 생태계', () => {
   });
   it('프리셋 목록', () => { expect(PRESETS.map((p) => p.name)).toEqual(['herb', 'omni', 'predator', 'fish', 'fishpred']); void T_PLAIN; });
 });
+
+import { CAUSE } from '../src/sim/lineage';
+describe('에너지 외 사망 요인', () => {
+  const mk = () => World.create(defaultConfig({ w: 32, h: 32, seed: 5, initPop: 0, genTerrain: false, features: STAGES[7] }));
+  it('노화: 수명을 한참 넘기면 사망하고 몸은 사체로 남는다', () => {
+    const w = mk(); w.seedIndividuals(20, true);
+    for (const i of w.inds) { i.age = i.t.lifespan * 3; i.reserve = i.t.maxReserve; }
+    const before = w.totalEnergy().total;
+    for (let t = 0; t < 30; t++) stepSim(w);
+    expect(w.cnt.aged).toBeGreaterThan(5);
+    expect(w.totalEnergy().total).toBeGreaterThan(before * 0.9); // 대사 열손실 외에 사라진 에너지 없음
+  });
+  it('서식지: 물고기가 뭍에서 죽는다 / 장부 보존', () => {
+    const w = mk(); w.seedIndividuals(30, true, 'fish');
+    for (const i of w.inds) i.reserve = i.t.maxReserve; // 전부 평지 위
+    for (let t = 0; t < 400; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+    }
+    expect(w.cnt.habitat).toBeGreaterThan(0); void CAUSE;
+  });
+  it('새끼는 부모와 같은 지형에 태어난다', () => {
+    const w = World.create(defaultConfig({ w: 48, h: 36, seed: 2, waterLevel: 0.5, founders: [{ preset: 'fish', count: 100 }], features: STAGES[7] }));
+    for (let t = 0; t < 300; t++) stepSim(w);
+    const kids = w.inds.filter((i) => i.age < 3 && i.birth === w.tick - 1);
+    for (const k of kids) expect(w.terrain[(k.y | 0) * w.w + (k.x | 0)]).toBe(1);
+  });
+});

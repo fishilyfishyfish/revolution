@@ -1,6 +1,6 @@
 // 개체 계보 기록: id → 부모(들), 출생/사망 틱, 사망 원인
-export const CAUSE = { ALIVE: 255, STARVED: 0, EATEN: 1, DISEASE: 2, METEOR: 3 } as const;
-export const CAUSE_NAMES: Record<number, string> = { 0: '아사', 1: '피식', 2: '질병', 3: '운석', 255: '생존' };
+export const CAUSE = { ALIVE: 255, STARVED: 0, EATEN: 1, DISEASE: 2, METEOR: 3, AGE: 4, TEMP: 5, HABITAT: 6 } as const;
+export const CAUSE_NAMES: Record<number, string> = { 0: '아사', 1: '피식', 2: '질병', 3: '운석', 4: '노화', 5: '극한 기온', 6: '서식지 부적합', 255: '생존' };
 
 export class Lineage {
   n = 0;
