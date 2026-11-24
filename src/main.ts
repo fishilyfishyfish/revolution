@@ -60,7 +60,8 @@ document.querySelectorAll<HTMLButtonElement>('#speeds button').forEach((b) => b.
 });
 ($('speeds').querySelector('[data-s="5"]') as HTMLButtonElement).click();
 $('render').onchange = sendSpeed;
-function toast(msg: string, ms = 2600) {
+function toast(_msg: string, _ms = 2600) { /* 알림 꺼짐 */ }
+function toastUnused(msg: string, ms = 2600) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; $('toasts').appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 450); }, ms);
 }
