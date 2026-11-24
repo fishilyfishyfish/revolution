@@ -13,7 +13,7 @@ export interface Config {
   // 식물/토양
   pMax: number; sunRate: number; soilInit: number; soilHalf: number; soilShare: number;
   senescence: number; corpseDecay: number; plantTempOpt: number[]; plantTempWidth: number;
-  plantMin: number; corpseMin: number;
+  plantMin: number; corpseMin: number; offProfile: number;
   // 기후
   meanTemp: number; seasonAmp: number; seasonPeriod: number; seasonGrowthAmp: number;
   zoneOffset: number[]; sun: number;
@@ -21,7 +21,7 @@ export interface Config {
   kStruct: number; kStore: number; effMax: number; biteK: number; attackK: number; turnK: number;
   // 비용 (전부 열손실로 나가는 대사 비용)
   cBasal: number; cMove: number; cVision: number; cTherm: number; cBrain: number; cBrainW: number;
-  cRes: number; cRepair: number; cAct: number; cAttempt: number; cSignal: number;
+  cRes: number; cRepair: number; cAct: number; cAttack: number; cAttempt: number; cSignal: number;
   // 지형
   speedMul: number[]; costMul: number[];
   // 질병
@@ -36,18 +36,18 @@ export function defaultConfig(over: Partial<Config> = {}): Config {
   const c: Config = {
     w: 128, h: 96, seed: 1, initPop: 400,
     features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true },
-    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.4,
+    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55,
     senescence: 0, corpseDecay: 0.01, plantTempOpt: [18, 8, 28], plantTempWidth: 14,
-    plantMin: 0.5, corpseMin: 1.0,
-    meanTemp: 15, seasonAmp: 8, seasonPeriod: 1200, seasonGrowthAmp: 0.4,
-    zoneOffset: [-8, 0, 8], sun: 1,
-    kStruct: 20, kStore: 100, effMax: 0.9, biteK: 2.5, attackK: 4, turnK: 0.6,
-    cBasal: 0.1, cMove: 0.4, cVision: 0.0002, cTherm: 0.0006, cBrain: 0.015, cBrainW: 0.01,
-    cRes: 0.5, cRepair: 0.3, cAct: 0.02, cAttempt: 1.0, cSignal: 0.01,
+    plantMin: 0.5, corpseMin: 1.0, offProfile: 0.4,
+    meanTemp: 15, seasonAmp: 6, seasonPeriod: 1200, seasonGrowthAmp: 0.3,
+    zoneOffset: [-6, 0, 6], sun: 1,
+    kStruct: 20, kStore: 100, effMax: 0.9, biteK: 3.5, attackK: 2, turnK: 0.6,
+    cBasal: 0.1, cMove: 0.25, cVision: 0.0002, cTherm: 0.0006, cBrain: 0.015, cBrainW: 0.01,
+    cRes: 0.5, cRepair: 0.3, cAct: 0.02, cAttack: 0.5, cAttempt: 1.0, cSignal: 0.01,
     speedMul: [1, 0.5, 0.15], costMul: [1, 3, 10],
     infDuration: 150, infImmune: 100, infMetaMul: 1.5, contactR: 1.6, infBeta: 0.25,
     pathogenDecay: 0.97, pathogenDose: 0.2,
-    dmax: 0.35, dcluster: 0.2, speciesInterval: 100, statInterval: 25,
+    dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
     maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };

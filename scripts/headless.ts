@@ -27,7 +27,7 @@ const arg = (k: string, d: string) => { const i = process.argv.indexOf('--' + k)
 const stage = +arg('stage', '7'), seed = +arg('seed', '1'), ticks = +arg('ticks', '100000');
 const pop = +arg('pop', '400'), tag = arg('tag', `s${stage}_seed${seed}`);
 const over = JSON.parse(arg('cfg', '{}'));
-const cfg = defaultConfig({ seed, initPop: stage === 1 ? 0 : pop, features: STAGES[stage], ...over });
+const cfg = defaultConfig({ seed, initPop: stage === 1 ? 0 : pop, ...over, features: { ...STAGES[stage], ...(over.features ?? {}) } });
 const w = World.create(cfg);
 const t0 = Date.now();
 const e0 = w.totalEnergy().total;

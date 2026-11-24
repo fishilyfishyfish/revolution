@@ -1,6 +1,6 @@
 import { Config, defaultConfig } from './config';
 import {
-  G, NIN, NH, NOUT, TAU, Traits, brainForward, crossover, founderBrain, founderGenome, genomeDistance, mutate, randomGenome,
+  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, founderBrain, founderGenome, genomeDistance, mutate, randomGenome,
 } from './genome';
 import { CAUSE, Lineage } from './lineage';
 import { Rng } from './rng';
@@ -19,6 +19,8 @@ export type Intervention =
   | ({ kind: 'meteor' } & Shape)
   | ({ kind: 'plague' } & Shape)
   | { kind: 'climate'; delta: number; duration: number };
+// 사용자가 쓸 수 있는 개입 종류는 환경에 대한 것뿐이다 (개체 편집/이동/복제/제거/소환 없음)
+export const INTERVENTION_KINDS = ['terrain', 'biome', 'food', 'global', 'meteor', 'plague', 'climate'] as const;
 export interface LogEntry { tick: number; iv: Intervention }
 export interface EventRec { tick: number; kind: string; info?: string }
 
@@ -26,7 +28,7 @@ export class Ind {
   id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0;
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
-  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; mode = 0; mated = false;
+  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
 }
 
 export interface SpeciesRec {
@@ -150,9 +152,13 @@ export class World {
   seedIndividuals(count: number, founder: boolean): number {
     const cfg = this.cfg; const rng = this.rng;
     if (count <= 0) return 0;
-    const plain: number[] = [];
+    let plain: number[] = [];
     for (let i = 0; i < this.n; i++) if (this.terrain[i] === T_PLAIN) plain.push(i);
     if (!plain.length) return 0;
+    if (founder) { // 창시 집단은 식물 A 우세·온난 지역에서 시작 (창시자 효과)
+      const home = plain.filter((i) => this.dom[i] === 0 && this.zone[i] === 1);
+      if (home.length >= 100) plain = home;
+    }
     let stock = 0; for (let s = 0; s < NPLANT; s++) for (let i = 0; i < this.n; i++) stock += this.plants[s][i];
     const created: Ind[] = [];
     const base = founder ? founderBrain(rng) : null;
@@ -164,7 +170,7 @@ export class World {
       const c = plain[rng.int(plain.length)];
       ind.x = (c % this.w) + rng.next() * 0.999; ind.y = Math.floor(c / this.w) + rng.next() * 0.999;
       ind.a = rng.next() * TAU;
-      ind.structE = ind.t.structE; ind.reserve = ind.t.maxReserve * 0.5;
+      ind.structE = ind.t.structE; ind.reserve = ind.t.maxReserve * 0.7;
       const e = ind.structE + ind.reserve;
       if (need + e > stock * 0.6) break; // 식물 재고의 60%까지만 사용
       need += e; created.push(ind);
@@ -371,14 +377,14 @@ export class World {
       const c = cy * w + cx;
       if (!fp) {
         const a0 = p0[c], a1 = p1[c], a2 = p2[c];
-        if (a0 + a1 + a2 >= cfg.plantMin) {
+        if (a0 + a1 + a2 >= t.foodThr) {
           fp = true;
           let rel = dx === 0 && dy === 0 ? 0 : Math.atan2(dy, dx) - ind.a; rel -= TAU * Math.round(rel / TAU);
           inp[0] = rel / Math.PI; inp[1] = 1 - d / R;
           inp[2] = a0 >= a1 && a0 >= a2 ? -1 : a1 >= a2 ? 0 : 1;
         }
       }
-      if (!fc && corpse[c] >= cfg.corpseMin) {
+      if (!fc && corpse[c] >= t.foodThr) {
         fc = true;
         let rel = dx === 0 && dy === 0 ? 0 : Math.atan2(dy, dx) - ind.a; rel -= TAU * Math.round(rel / TAU);
         inp[3] = rel / Math.PI; inp[4] = 1 - d / R;
@@ -474,9 +480,14 @@ export class World {
         ind.oTurn = rng.next() * 2 - 1; ind.oAcc = rng.next() * 2 - 1; ind.oBite = rng.next() * 2 - 1;
         ind.oRep = rng.next() * 2 - 1; ind.oMate = rng.next() * 2 - 1;
       }
-      if (F.reproduce && ind.oRep > 0 && this.ready(ind)) {
-        if (F.sexual && rng.next() < ind.t.sex) { if (ind.oMate > 0) ind.mode = MODE_SEX; }
-        else ind.mode = MODE_ASEX;
+      if (F.reproduce) {
+        if (ind.rec > 0) { // 짝 찾기 상태 유지: 신호(출력)가 켜진 틱에만 광고
+          if (!this.ready(ind)) ind.rec = 0;
+          else if (ind.oMate > 0) ind.mode = MODE_SEX;
+        } else if (ind.oRep > 0 && this.ready(ind)) {
+          if (F.sexual && rng.next() < ind.t.sex) ind.rec = 40; // 유성 모드 진입: 최대 40틱 짝 탐색 (그동안 무성 번식 안 함)
+          else ind.mode = MODE_ASEX;
+        }
       }
     }
 
@@ -557,6 +568,7 @@ export class World {
       this.pay(ind, cfg.cSignal, 5);
       this.tryMate(ind);
     }
+    if (ind.rec > 0) ind.rec = ind.mated ? 0 : ind.rec - 1;
     if (ind.reserve <= 0) this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED);
   }
 
@@ -586,6 +598,7 @@ export class World {
         const gain = Math.min(dmg * t.eff[3], room > 0 ? room : 0);
         ind.reserve += gain;
         this.corpse[this.cellOf(victim.x, victim.y)] += dmg - gain; // 소화 못한 몫은 사체로
+        this.pay(ind, cfg.cAttack * dmg, 5); // 공격 노력(근육 열손실): 소화효율이 낮은 개체에겐 손해
         if (victim.reserve <= 0) this.kill(victim, CAUSE.EATEN);
         return;
       }
@@ -619,7 +632,7 @@ export class World {
         const o = inds[this.bItems[q]];
         if (o === ind || !o.alive || o.mated || o.mode !== MODE_SEX) continue;
         const dx = o.x - ind.x, dy = o.y - ind.y, d = Math.sqrt(dx * dx + dy * dy);
-        if (d > t.radius + o.t.radius + 1.0 || d >= bd) continue;
+        if (d > t.radius + o.t.radius + 1.5 || d >= bd) continue;
         if (!this.ready(o)) continue;
         bd = d; partner = o;
       }
@@ -628,7 +641,7 @@ export class World {
     ind.mated = true; partner.mated = true;
     this.pay(ind, cfg.cAttempt, 5); this.pay(partner, cfg.cAttempt, 5);
     const gd = genomeDistance(ind.genome, partner.genome);
-    const p = 1 - gd / cfg.dmax; // 호환성: 거리가 클수록 ↓, 임계치 넘으면 0
+    const p = compatProb(gd, cfg.dmax); // 호환성: 거리가 클수록 ↓, 임계치 넘으면 0
     if (p > 0 && this.rng.next() < p) { this.cnt.matings++; this.birthSex(ind, partner); }
     else this.cnt.matingFails++;
     if (partner.reserve <= 0) this.kill(partner, partner.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED);
@@ -674,7 +687,7 @@ export class World {
     const season = cfg.features.seasons ? 1 + cfg.seasonGrowthAmp * this.seasonSin : 1;
     const nu = cfg.soilShare, pMax = cfg.pMax, sunBase = cfg.sunRate * this.sunG * season;
     const sen = cfg.senescence, dec = cfg.corpseDecay, half = cfg.soilHalf, dv = cfg.devastTicks;
-    const pd = cfg.pathogenDecay;
+    const pd = cfg.pathogenDecay, off = cfg.offProfile;
     const resp = this.resp;
     let inflow = 0;
     for (let c = 0; c < n; c++) {
@@ -693,9 +706,9 @@ export class World {
         const x = P / pMax;
         let dvf = 1;
         if (this.devast[c] > 0) { dvf = 1 - this.devast[c] / dv; this.devast[c]--; }
-        const base = sunBase * this.sunMul[c] * (1 - x) * (0.2 + 0.8 * Math.min(1, 3 * x)) * dvf * (S / (S + half));
+        const base = sunBase * this.sunMul[c] * (1 - x) * (0.35 + 0.65 * Math.min(1, 3 * x)) * dvf * (S / (S + half));
         const z = this.zone[c], d = this.dom[c], rz = resp[z];
-        let g0 = base * (d === 0 ? 1 : 0.25) * rz[0], g1 = base * (d === 1 ? 1 : 0.25) * rz[1], g2 = base * (d === 2 ? 1 : 0.25) * rz[2];
+        let g0 = base * (d === 0 ? 1 : off) * rz[0], g1 = base * (d === 1 ? 1 : off) * rz[1], g2 = base * (d === 2 ? 1 : off) * rz[2];
         let g = g0 + g1 + g2;
         const need = nu * g;
         if (need > S) { const k = S / need; g0 *= k; g1 *= k; g2 *= k; g *= k; }

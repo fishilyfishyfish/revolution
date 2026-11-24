@@ -29,7 +29,7 @@ export class Traits {
   eff = new Float64Array(4); diet = new Float64Array(4);
   tOpt = 0; res = 0; thr = 0; give = 0; sex = 0; mut = 0; hue = 0; osc = 0;
   maxReserve = 0; structE = 0; m075 = 0; basal = 0; visCost = 0; brainCost = 0;
-  turnMax = 0; biteCap = 0; attackPow = 0;
+  turnMax = 0; biteCap = 0; attackPow = 0; foodThr = 0;
 
   decode(g: Float32Array, cfg: Config): this {
     this.size = 0.5 + 2.5 * c01(g[GENE.SIZE]);
@@ -62,7 +62,8 @@ export class Traits {
     this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
     this.turnMax = cfg.turnK / this.size;
     this.biteCap = cfg.biteK * m075;
-    this.attackPow = cfg.attackK * this.mass;
+    this.foodThr = Math.max(cfg.plantMin, 0.8 * this.biteCap); // 한 입 거리가 되는 먹이만 '보인다'
+    this.attackPow = cfg.attackK * Math.pow(this.mass, 1.25);
     return this;
   }
 }
@@ -73,12 +74,12 @@ export function founderBrain(rng: Rng): Float32Array {
   return b;
 }
 
-// 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.25)
+// 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.6)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
   const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
-  for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.25;
+  for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.6;
   return out;
 }
 
@@ -128,6 +129,9 @@ export function genomeDistance(a: Float32Array, b: Float32Array): number {
   for (let i = BO; i < G; i++) { const d = (a[i] - b[i]) * (1 / 3); sw += d * d; }
   return Math.sqrt(0.5 * st / NT + 0.5 * sw / NB);
 }
+
+// 교배 호환성: 거리가 클수록 성공률↓, dmax를 넘으면 0
+export function compatProb(d: number, dmax: number): number { const p = 1 - d / dmax; return p > 0 ? p : 0; }
 
 // ── 뇌 순전파 ──
 export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float64Array, out: Float64Array) {
