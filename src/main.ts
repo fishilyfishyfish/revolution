@@ -36,7 +36,7 @@ client.onMsg = (m: FromWorker) => {
     for (const r of m.spHist) spHist.push(r);
     if (st && m.events.length > st.events.length) toast('💀 전멸! 랜덤 게놈으로 재시작했어요', 4000);
     st = m; chartsDirty = true; updateHud();
-  } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length) toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); snapMetas = m.list; renderSnaps(); }
+  } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length && !snapToastShown) { snapToastShown = true; toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); } snapMetas = m.list; renderSnaps(); }
   else if (m.t === 'inspect') { insp = m.data; renderInspect(); }
   else if (m.t === 'snap') {
     if (m.purpose === 'save') {
@@ -47,6 +47,7 @@ client.onMsg = (m: FromWorker) => {
 };
 
 // ── 헤더 컨트롤 ──
+let snapToastShown = false;
 let speedSel = '5';
 const speedMult = () => (speedSel === 'max' ? 100 : +speedSel);
 const isMax = () => speedSel === 'max';
@@ -135,7 +136,7 @@ function apply(x: number, y: number, first: boolean) {
   else if (tool === 'foodDown') iv = { kind: 'food', x, y, r, delta: -0.5 };
   else if (first && tool === 'meteor') iv = { kind: 'meteor', x, y, r: Math.max(r, 3) };
   else if (first && tool === 'plague') iv = { kind: 'plague', x, y, r: Math.max(r, 2) };
-  if (iv && first) { const T: Record<string, string> = { meteor: '☄️ 운석 투하', plague: '🦠 역병 방출', terrain: '지형 변경', biome: '바이옴 변경', food: '음식 배율 변경' }; toast(T[iv.kind] + ' · 직전 상태가 스냅샷으로 저장돼요'); }
+  if (iv && first && (iv.kind === 'meteor' || iv.kind === 'plague')) { const T: Record<string, string> = { meteor: '☄️ 운석 투하', plague: '🦠 역병 방출', terrain: '지형 변경', biome: '바이옴 변경', food: '음식 배율 변경' }; toast(T[iv.kind] + ' · 직전 상태가 스냅샷으로 저장돼요'); }
   if (iv) { client.send({ t: 'iv', iv }); if (!running) client.send({ t: 'step', n: 1 }); }
 }
 canvas.onpointerdown = (e) => {
