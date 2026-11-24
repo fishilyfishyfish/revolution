@@ -1,0 +1,52 @@
+# stage 2 seed 3 ticks 100000 initPop 400
+t=5000 pop=50 births=0 starved=297 eaten=0 dis=0 restarts=0 P=254142 B=12065 C=22 S=174049 nA=1 nB=1 size=1.48 v=0.65 vis=6.8 sex=0.30 tps=4550
+t=10000 pop=15 births=0 starved=332 eaten=0 dis=0 restarts=0 P=284529 B=3360 C=42 S=166716 nA=1 nB=1 size=1.49 v=0.65 vis=6.9 sex=0.29 tps=5461
+   probe: 식물쪽회전 0.25(4) 사체쪽 0.00(1) 개체쪽 0.50(2) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.00/-
+t=15000 pop=4 births=0 starved=343 eaten=0 dis=0 restarts=0 P=294492 B=1079 C=0 S=163723 nA=0 nB=0 size=1.52 v=0.68 vis=7.1 sex=0.29 tps=5866
+t=20000 pop=1 births=0 starved=346 eaten=0 dis=0 restarts=0 P=297116 B=218 C=0 S=162851 nA=0 nB=0 size=1.56 v=0.67 vis=7.5 sex=0.27 tps=6127
+   probe: 식물쪽회전 -(0) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.00/-
+t=25000 pop=5 births=0 starved=442 eaten=0 dis=0 restarts=1 P=293420 B=664 C=0 S=174113 nA=0 nB=0 size=1.00 v=0.35 vis=6.5 sex=0.51 tps=5994
+t=30000 pop=3 births=0 starved=444 eaten=0 dis=0 restarts=1 P=296130 B=261 C=0 S=174477 nA=0 nB=0 size=0.95 v=0.31 vis=5.2 sex=0.39 tps=6161
+   probe: 식물쪽회전 1.00(1) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.59/- 먹기(근처/먼곳) 1.00/-
+t=35000 pop=1 births=0 starved=446 eaten=0 dis=0 restarts=1 P=297268 B=101 C=0 S=174693 nA=0 nB=0 size=0.92 v=0.28 vis=3.7 sex=0.65 tps=6287
+t=40000 pop=1 births=0 starved=446 eaten=0 dis=0 restarts=1 P=297505 B=78 C=0 S=174999 nA=0 nB=0 size=0.92 v=0.28 vis=3.7 sex=0.65 tps=6389
+   probe: 식물쪽회전 1.00(1) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) -/- 먹기(근처/먼곳) -/-
+t=45000 pop=1 births=0 starved=446 eaten=0 dis=0 restarts=1 P=297469 B=101 C=0 S=175474 nA=0 nB=0 size=0.92 v=0.28 vis=3.7 sex=0.65 tps=6469
+t=50000 pop=3 births=0 starved=544 eaten=0 dis=0 restarts=2 P=282677 B=125 C=34 S=188886 nA=0 nB=0 size=0.66 v=0.49 vis=8.2 sex=0.57 tps=6376
+   probe: 식물쪽회전 0.00(1) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.21/- 먹기(근처/먼곳) 0.33/-
+t=55000 pop=2 births=0 starved=545 eaten=0 dis=0 restarts=2 P=297142 B=90 C=0 S=181411 nA=0 nB=0 size=0.63 v=0.65 vis=7.1 sex=0.51 tps=6276
+t=60000 pop=2 births=0 starved=545 eaten=0 dis=0 restarts=2 P=297355 B=94 C=0 S=181720 nA=0 nB=0 size=0.63 v=0.65 vis=7.1 sex=0.51 tps=6345
+   probe: 식물쪽회전 0.00(1) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.50/-
+t=65000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297675 B=46 C=0 S=181775 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6405
+t=70000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297656 B=47 C=0 S=181898 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6387
+   probe: 식물쪽회전 -(0) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.00/-
+t=75000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297674 B=48 C=0 S=182001 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6420
+t=80000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297692 B=41 C=0 S=182102 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6433
+   probe: 식물쪽회전 -(0) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.00/-
+t=85000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297708 B=38 C=0 S=182206 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6411
+t=90000 pop=1 births=0 starved=546 eaten=0 dis=0 restarts=2 P=297675 B=48 C=0 S=182339 nA=0 nB=0 size=0.64 v=0.26 vis=9.1 sex=0.90 tps=6406
+   probe: 식물쪽회전 -(0) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 0.00/-
+t=95000 pop=4 births=0 starved=643 eaten=0 dis=0 restarts=3 P=293031 B=675 C=0 S=192088 nA=0 nB=0 size=1.10 v=0.40 vis=4.6 sex=0.50 tps=6366
+t=100000 pop=1 births=0 starved=646 eaten=0 dis=0 restarts=3 P=297148 B=81 C=0 S=191456 nA=0 nB=0 size=0.84 v=0.21 vis=1.7 sex=0.71 tps=6356
+   probe: 식물쪽회전 -(0) 사체쪽 -(0) 개체쪽 -(0) 가속(식물근처/먼곳) 0.00/- 먹기(근처/먼곳) 1.00/-
+## 형질 평균 (초기 10% 구간 → 마지막 10% 구간, 개체 간 표준편차 대비 이동)
+size   1.488 → 1.308  (Δ=-0.180, -0.28σ)
+vmax   0.647 → 0.333  (Δ=-0.314, -2.11σ)
+vis    6.780 → 5.233  (Δ=-1.546, -0.64σ)
+ang    3.275 → 3.076  (Δ=-0.199, -0.22σ)
+d0     0.537 → 0.335  (Δ=-0.202, -2.59σ)
+d1     0.216 → 0.273  (Δ=0.057, 0.61σ)
+d2     0.194 → 0.224  (Δ=0.030, 0.35σ)
+dm     0.054 → 0.168  (Δ=0.114, 1.65σ)
+tOpt   15.206 → 14.492  (Δ=-0.714, -0.31σ)
+res    0.196 → 0.376  (Δ=0.180, 1.56σ)
+thr    0.629 → 0.600  (Δ=-0.029, -0.17σ)
+give   0.380 → 0.272  (Δ=-0.107, -1.68σ)
+sex    0.297 → 0.626  (Δ=0.328, 1.86σ)
+mut    0.015 → 0.050  (Δ=0.035, 0.93σ)
+brain  0.810 → 0.643  (Δ=-0.167, -6.67σ)
+## 누적 대사 비용 비율: 기초대사 62.9%, 이동 14.4%, 시야 4.2%, 체온조절 8.0%, 뇌 5.9%, 행동/번식시도 4.7%, 감염 추가 0.0%
+## 요약 maxPop=347 minPop(>500)=1 final=1 restarts=3 births=0 (유성 0) 에너지장부 최대오차=5.45e-13
+## 사망: 아사 646 피식 0 질병 0 운석 0
+## 종(클러스터) 0, 교배집단 0, 누적 클러스터종 285
+## checksum 792ce948784075dc  elapsed 16s

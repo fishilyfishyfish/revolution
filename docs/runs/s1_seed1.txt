@@ -1,0 +1,42 @@
+# stage 1 seed 1 ticks 100000 initPop 0
+t=5000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=322193 B=0 C=0 S=139656 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6402
+t=10000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323182 B=0 C=0 S=139112 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6472
+t=15000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6482
+t=20000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6523
+t=25000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6575
+t=30000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6627
+t=35000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6644
+t=40000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6566
+t=45000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6424
+t=50000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6285
+t=55000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6297
+t=60000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6330
+t=65000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6354
+t=70000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6372
+t=75000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6243
+t=80000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6220
+t=85000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6199
+t=90000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6205
+t=95000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6237
+t=100000 pop=0 births=0 starved=0 eaten=0 dis=0 restarts=0 P=323190 B=0 C=0 S=139107 nA=0 nB=0 size=0.00 v=0.00 vis=0.0 sex=0.00 tps=6264
+## 형질 평균 (초기 10% 구간 → 마지막 10% 구간, 개체 간 표준편차 대비 이동)
+size   0.000 → 0.000  (Δ=0.000, 0.00σ)
+vmax   0.000 → 0.000  (Δ=0.000, 0.00σ)
+vis    0.000 → 0.000  (Δ=0.000, 0.00σ)
+ang    0.000 → 0.000  (Δ=0.000, 0.00σ)
+d0     0.000 → 0.000  (Δ=0.000, 0.00σ)
+d1     0.000 → 0.000  (Δ=0.000, 0.00σ)
+d2     0.000 → 0.000  (Δ=0.000, 0.00σ)
+dm     0.000 → 0.000  (Δ=0.000, 0.00σ)
+tOpt   0.000 → 0.000  (Δ=0.000, 0.00σ)
+res    0.000 → 0.000  (Δ=0.000, 0.00σ)
+thr    0.000 → 0.000  (Δ=0.000, 0.00σ)
+give   0.000 → 0.000  (Δ=0.000, 0.00σ)
+sex    0.000 → 0.000  (Δ=0.000, 0.00σ)
+mut    0.000 → 0.000  (Δ=0.000, 0.00σ)
+brain  0.000 → 0.000  (Δ=0.000, 0.00σ)
+## 누적 대사 비용 비율: 기초대사 0.0%, 이동 0.0%, 시야 0.0%, 체온조절 0.0%, 뇌 0.0%, 행동/번식시도 0.0%, 감염 추가 0.0%
+## 요약 maxPop=0 minPop(>500)=0 final=0 restarts=0 births=0 (유성 0) 에너지장부 최대오차=1.26e-12
+## 사망: 아사 0 피식 0 질병 0 운석 0
+## 종(클러스터) 0, 교배집단 0, 누적 클러스터종 0
+## checksum ed78a03ea503ca38  elapsed 16s
