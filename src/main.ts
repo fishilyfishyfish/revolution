@@ -102,9 +102,9 @@ document.querySelectorAll<HTMLButtonElement>('.closebtn').forEach((b) => b.oncli
 // 모바일: 도구 모음과 파일 메뉴를 '환경' 시트 안으로 옮긴다 (지도 아래는 환경/표시/분석 목록)
 const mq = window.matchMedia('(max-width: 800px)');
 function layoutMobile() {
-  const q = $('quickbar'), fb = $('filepanelbody');
-  if (mq.matches) { $('tools').insertBefore(q, $('tools').children[2] ?? null); $('tools').appendChild(fb); }
-  else { $('mapwrap').appendChild(q); $('filepanel').appendChild(fb); }
+  const q = $('quickbar');
+  if (mq.matches) { $('tools').insertBefore(q, $('tools').children[2] ?? null); }
+  else { $('mapwrap').appendChild(q); }
   dirty = true;
 }
 mq.addEventListener('change', layoutMobile); layoutMobile();
