@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>진화 시뮬레이터</title>
+<style>
+:root { --bg:#14171c; --panel:#1b2027; --panel2:#222a33; --fg:#e4e8ee; --muted:#8c97a6; --grid:#2c3541; --accent:#4aa3ff; --danger:#ef5b5b; --line:#2f3844; }
+@media (prefers-color-scheme: light) { :root { --bg:#eef1f5; --panel:#fff; --panel2:#f2f4f8; --fg:#1b2430; --muted:#5f6b7a; --grid:#dde2ea; --accent:#1769d1; --danger:#c62828; --line:#d3d9e2; } }
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); font:13px/1.45 system-ui, -apple-system, "Noto Sans KR", sans-serif; }
+#app { display:grid; grid-template-columns: 250px minmax(360px,1fr) 440px; grid-template-rows: auto 1fr; height:100vh; gap:8px; padding:8px; }
+header { grid-column:1/4; display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:6px 10px; }
+header h1 { font-size:15px; margin:0 6px 0 0; }
+header .grp { display:flex; align-items:center; gap:6px; }
+button, select, input { font:inherit; color:var(--fg); background:var(--panel2); border:1px solid var(--line); border-radius:6px; padding:3px 8px; }
+button { cursor:pointer; } button:hover { border-color:var(--accent); } button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+button.danger { border-color:var(--danger); }
+input[type=number] { width:80px; } input[type=range] { padding:0; }
+#readout { margin-left:auto; color:var(--muted); font-variant-numeric: tabular-nums; }
+aside, #side { background:var(--panel); border:1px solid var(--line); border-radius:8px; overflow:auto; min-height:0; }
+aside { padding:8px; }
+aside h3 { font-size:12px; margin:10px 0 4px; color:var(--muted); text-transform:none; letter-spacing:.02em; }
+aside h3:first-child { margin-top:0; }
+.tools { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.row { display:flex; align-items:center; gap:6px; margin:4px 0; } .row label { flex:0 0 70px; color:var(--muted); } .row input[type=range] { flex:1; } .row .v { width:42px; text-align:right; font-variant-numeric:tabular-nums; }
+.note { color:var(--muted); font-size:11.5px; }
+#center { display:flex; flex-direction:column; gap:6px; min-height:0; min-width:0; }
+#mapwrap { position:relative; background:#000; border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; justify-content:center; }
+#map { width:100%; max-height:calc(100vh - 150px); aspect-ratio:128/96; image-rendering:pixelated; cursor:crosshair; display:block; touch-action:none; }
+#viewbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; color:var(--muted); }
+#viewbar select { padding:2px 4px; }
+.tabs { display:flex; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--panel); z-index:2; }
+.tabs button { border:0; border-radius:0; background:none; padding:8px 12px; border-bottom:2px solid transparent; }
+.tabs button.on { background:none; color:var(--accent); border-bottom-color:var(--accent); }
+.tab { display:none; padding:8px; } .tab.on { display:block; }
+canvas.chart { width:100%; height:150px; display:block; margin-bottom:6px; background:var(--panel2); border-radius:6px; }
+canvas.tall { height:200px; }
+table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; } td, th { padding:2px 4px; text-align:left; border-bottom:1px solid var(--line); } th { color:var(--muted); font-weight:500; }
+.chip { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
+.snap { display:flex; justify-content:space-between; align-items:center; gap:4px; padding:3px 0; border-bottom:1px solid var(--line); }
+#branch { display:none; flex-direction:column; gap:6px; } #branch.on { display:flex; }
+#branch .two { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #branch canvas.m { width:100%; aspect-ratio:128/96; background:#000; border-radius:6px; image-rendering:pixelated; }
+.bar { height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; } .bar > i { display:block; height:100%; background:var(--accent); }
+@media (max-width: 1100px) { #app { grid-template-columns: 1fr; grid-template-rows:auto; height:auto; } header { grid-column:1; } #map { max-height:none; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>진화 시뮬레이터</h1>
+    <div class="grp"><button id="play">▶ 재생</button><button id="step">1틱</button></div>
+    <div class="grp"><label for="speed">속도</label><input id="speed" type="range" min="0" max="100" value="30" /><span id="speedv">×5</span>
+      <label><input id="max" type="checkbox" /> 최대</label><label><input id="render" type="checkbox" checked /> 렌더</label></div>
+    <div class="grp"><label for="seed">시드</label><input id="seed" type="number" value="1" /><select id="stage" title="기능 세트"><option value="7">전체</option><option value="4">뇌만(단계4)</option><option value="3">귀무 뇌(단계3)</option></select><button id="reset">새 월드</button></div>
+    <div class="grp"><button id="save">저장</button><button id="load">불러오기</button><input id="file" type="file" accept=".json" hidden /></div>
+    <div id="readout">틱 0 · 개체 0</div>
+  </header>
+
+  <aside id="tools">
+    <h3>도구 (환경에만 작용)</h3>
+    <div class="tools" id="toolbtns">
+      <button data-tool="inspect" class="on">개체 보기</button>
+      <button data-tool="terrain0">평지</button>
+      <button data-tool="terrain1">물</button>
+      <button data-tool="terrain2">산</button>
+      <button data-tool="biome">바이옴</button>
+      <button data-tool="foodUp">음식 +</button>
+      <button data-tool="foodDown">음식 −</button>
+      <button data-tool="meteor" class="danger">운석</button>
+      <button data-tool="plague" class="danger">역병</button>
+    </div>
+    <div class="row"><label>브러시 반경</label><input id="brush" type="range" min="1" max="20" value="4" /><span class="v" id="brushv">4</span></div>
+    <div class="row"><label>바이옴 식물</label><select id="bplant"><option value="-1">변경 안 함</option><option value="0">식물 A</option><option value="1">식물 B</option><option value="2">식물 C</option></select></div>
+    <div class="row"><label>기온대</label><select id="bzone"><option value="-1">변경 안 함</option><option value="0">한랭</option><option value="1">온난</option><option value="2">고온</option></select></div>
+    <div class="note" id="tooldesc">개체는 클릭해서 보기만 가능. 개입은 환경에만.</div>
+
+    <h3>전역 슬라이더</h3>
+    <div class="row"><label>햇빛량</label><input id="gSun" type="range" min="0" max="3" step="0.05" value="1" /><span class="v" id="gSunv">1</span></div>
+    <div class="row"><label>평균 기온</label><input id="gTemp" type="range" min="-5" max="35" step="0.5" value="15" /><span class="v" id="gTempv">15</span></div>
+    <div class="row"><label>계절 진폭</label><input id="gAmp" type="range" min="0" max="20" step="0.5" value="8" /><span class="v" id="gAmpv">8</span></div>
+    <div class="row"><label>계절 주기</label><input id="gPer" type="range" min="200" max="4000" step="50" value="1200" /><span class="v" id="gPerv">1200</span></div>
+
+    <h3>기후 이벤트 (서서히 이동)</h3>
+    <div class="row"><label>변화폭 ℃</label><input id="cDelta" type="number" value="10" /><label style="flex:0 0 40px">기간</label><input id="cDur" type="number" value="1500" /></div>
+    <div class="tools"><button id="iceAge">빙하기</button><button id="warming">온난화</button></div>
+
+    <h3>자동 스냅샷 (개입 직전)</h3>
+    <div id="snaps" class="note">아직 없음</div>
+    <h3>표시</h3>
+    <div class="row"><label>배경</label><select id="vbg"><option value="plants">식물/사체</option><option value="biome">바이옴</option><option value="temp">기온대</option><option value="sun">햇빛 배율</option></select></div>
+    <div class="row"><label>개체 색</label><select id="vind"><option value="hue">색 유전자</option><option value="speciesA">종 (거리 클러스터)</option><option value="speciesB">종 (교배 집단)</option><option value="energy">에너지</option></select></div>
+    <div class="row"><label><input id="vshow" type="checkbox" checked /> 개체 표시</label></div>
+  </aside>
+
+  <main id="center">
+    <div id="mapwrap"><canvas id="map" width="896" height="672"></canvas></div>
+    <div id="viewbar"><span id="hover">—</span></div>
+    <div id="branch">
+      <div class="row"><b>분기 비교</b><span class="note" id="branchinfo"></span><span style="flex:1"></span><button id="branchClose">닫기</button></div>
+      <div class="two"><div><div class="note">A: 개입 안 한 버전</div><canvas class="m" id="mapA" width="512" height="384"></canvas></div>
+           <div><div class="note">B: 개입한 버전 <span id="branchIv"></span></div><canvas class="m" id="mapB" width="512" height="384"></canvas></div></div>
+      <div class="row"><label>비교 지표</label><select id="bmetric"><option value="pop">개체 수</option><option value="nA">종 수(클러스터)</option><option value="nB">종 수(교배집단)</option><option value="m_size">몸 크기</option><option value="m_vmax">최대 속도</option><option value="m_res">질병 저항</option><option value="m_tOpt">적정 기온</option><option value="plants">식물 에너지</option></select></div>
+      <canvas class="chart" id="bchart"></canvas>
+    </div>
+  </main>
+
+  <section id="side">
+    <div class="tabs" id="tabs"><button data-tab="graphs" class="on">그래프</button><button data-tab="species">종·계통</button><button data-tab="inspect">개체</button><button data-tab="log">개입 로그</button></div>
+    <div class="tab on" id="tab-graphs">
+      <canvas class="chart" id="cPop"></canvas>
+      <div class="row"><label>형질</label><select id="traitSel"></select></div>
+      <canvas class="chart" id="cTrait"></canvas>
+      <canvas class="chart" id="cHist"></canvas>
+      <canvas class="chart" id="cSex"></canvas>
+      <canvas class="chart" id="cEnergy"></canvas>
+      <canvas class="chart" id="cCost" style="height:150px"></canvas>
+      <div class="note" id="ledger"></div>
+    </div>
+    <div class="tab" id="tab-species">
+      <canvas class="chart" id="cSpN"></canvas>
+      <canvas class="chart" id="cSpArea"></canvas>
+      <div class="row"><label><input id="prune" type="checkbox" /> 멸종 가지 제거</label></div>
+      <canvas class="chart tall" id="cTree"></canvas>
+      <div class="note">(a) 게놈 거리 클러스터 / (b) 실제 교배 가능 집단(호환성 그래프 연결 성분). 두 판정이 다르면 격리·부분 교배 상태.</div>
+      <table id="spTable"></table>
+    </div>
+    <div class="tab" id="tab-inspect">
+      <div id="inspInfo" class="note">맵에서 개체를 클릭 (읽기 전용)</div>
+      <canvas class="chart tall" id="cBrain" style="height:280px"></canvas>
+      <pre id="inspTraits"></pre><pre id="inspLin"></pre>
+    </div>
+    <div class="tab" id="tab-log"><div id="logList" class="note">개입 없음</div></div>
+  </section>
+</div>
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
