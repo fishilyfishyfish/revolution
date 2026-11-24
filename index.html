@@ -48,7 +48,18 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
 #branch.open { display:flex; }
 #branch .two { display:grid; grid-template-columns:1fr 1fr; gap:6px; } #branch canvas.m { width:100%; aspect-ratio:128/96; background:#000; border-radius:6px; image-rendering:pixelated; }
 .bar { height:8px; background:var(--panel2); border-radius:4px; overflow:hidden; } .bar > i { display:block; height:100%; background:var(--accent); }
-@media (max-width: 800px) { #tools, #viewpanel, #filepanel { left:8px; width:calc(100vw - 16px); } }
+@media (max-width: 800px) {
+  #app { padding:4px; gap:4px; height:100dvh; }
+  header { gap:4px 8px; padding:4px 6px; } header h1 { display:none; }
+  header .grp label:not(:has(input)) { display:none; } #speed { width:90px; }
+  #readout { margin-left:0; width:100%; font-size:11px; }
+  button, select, input { padding:6px 10px; } /* 터치 타깃 */
+  #mapwrap { align-items:flex-start; } #map { height:auto; width:100%; max-height:100%; }
+  .panel, #tools, #viewpanel, #filepanel, #side, #branch { top:auto; bottom:0; left:0; right:0; width:100%; transform:none; max-height:48dvh; border-radius:12px 12px 0 0; }
+  #branch .two { grid-template-columns:1fr; }
+  .tabs button { padding:10px 10px; }
+}
+@media (pointer: coarse) { input[type=range] { height:28px; } }
 </style>
 </head>
 <body>

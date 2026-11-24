@@ -72,6 +72,7 @@ document.addEventListener('keydown', (e) => { if (e.code === 'Space' && (e.targe
 // ── 반투명 패널 토글 ──
 document.querySelectorAll<HTMLButtonElement>('#panelbtns button').forEach((b) => b.onclick = () => {
   const el = $(b.dataset.panel!); const open = !el.classList.contains('open');
+  if (open && window.matchMedia('(max-width: 800px)').matches) { document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open')); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on')); }
   el.classList.toggle('open', open); b.classList.toggle('on', open); chartsDirty = true;
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open')); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on')); } });
@@ -123,6 +124,7 @@ canvas.onpointermove = (e) => {
 };
 canvas.onpointerup = () => { painting = false; }; canvas.onpointerleave = () => { hoverPos = null; dirty = true; };
 function selectTab(name: string) {
+  if (window.matchMedia('(max-width: 800px)').matches) document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open'));
   $('side').classList.add('open'); document.querySelector('#panelbtns [data-panel=side]')?.classList.add('on'); (document.querySelector(`#tabs button[data-tab=${name}]`) as HTMLButtonElement).click(); }
 
 for (const [id, key] of [['gSun', 'sun'], ['gTemp', 'meanTemp'], ['gAmp', 'seasonAmp'], ['gPer', 'seasonPeriod']] as const) {
