@@ -100,7 +100,7 @@ export function founderBrain(rng: Rng): Float32Array {
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.6)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
-  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.1, 0.2, 0.02, 0.2, 0.2, 0.3, 0.2, 0.02, 0.15, 0.2];
+  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.6;
@@ -110,7 +110,7 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
 // 창시 집단 프리셋 (새 월드 시작 때만 선택). 형질 값은 출발점일 뿐이고 이후 자유롭게 진화한다.
 export interface Preset { name: string; label: string; icon: string; water: boolean; traits: Partial<Record<keyof typeof GENE, number>> }
 export const PRESETS: Preset[] = [
-  { name: 'herb', label: '초식동물', icon: '🦌', water: false, traits: { ARMOR: 0.3, HEAR: 0.4 } },
+  { name: 'herb', label: '초식동물', icon: '🦌', water: false, traits: { ARMOR: 0.25, HEAR: 0.3 } },
   { name: 'omni', label: '잡식동물', icon: '🐗', water: false, traits: { D0: 0.3, D1: 0.3, D2: 0.3, DM: 0.3, SIZE: 0.45 } },
   { name: 'predator', label: '육식동물', icon: '🐺', water: false, traits: { SIZE: 0.55, VMAX: 0.75, VIS: 0.65, ANG: 0.4, D0: 0.03, D1: 0.03, D2: 0.03, DM: 0.9, CLAW: 0.6, SMELL: 0.5 } },
   { name: 'fish', label: '물고기', icon: '🐟', water: true, traits: { SIZE: 0.12, VMAX: 0.5, VIS: 0.5, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.8, DM: 0.14, CLUTCH: 0.6 } },
@@ -124,7 +124,9 @@ export function presetGenome(name: string, rng: Rng, base: Float32Array, out = n
 }
 
 export function randomGenome(rng: Rng, out = new Float32Array(G)): Float32Array {
-  for (let i = 0; i < NT; i++) out[i] = rng.next();
+  // 전멸 후 재시작용 무작위 게놈. 유지비가 큰 선택 형질(갑옷·발톱·독·감각·단열·겨울잠·허용폭)은 0 쪽으로 치우친 분포(r²)에서 뽑는다.
+  const skew = new Set<number>([GENE.ARMOR, GENE.CLAW, GENE.TOXIN, GENE.SMELL, GENE.HEAR, GENE.TWID, GENE.INSUL, GENE.HIBER]);
+  for (let i = 0; i < NT; i++) { const r = rng.next(); out[i] = skew.has(i) ? r * r : r; }
   for (let i = 0; i < NB; i++) out[BO + i] = rng.gauss() * 0.8;
   return out;
 }
