@@ -60,36 +60,50 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
   .tabs button { padding:10px 10px; }
 }
 @media (pointer: coarse) { input[type=range] { height:28px; } }
+
+#quickbar { position:absolute; left:8px; top:8px; z-index:5; display:flex; flex-direction:column; gap:6px; max-height:calc(100% - 16px); }
+#toolbtns { display:flex; flex-direction:column; gap:3px; padding:4px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); }
+#toolbtns button { display:flex; align-items:center; gap:6px; text-align:left; padding:5px 9px; background:transparent; border-color:transparent; }
+#toolbtns button i { font-style:normal; width:20px; text-align:center; } #toolbtns button span { font-size:12px; }
+#toolbtns button.on { background:var(--accent); } #toolbtns button.danger:not(.on):hover { border-color:var(--danger); }
+#brushrow { display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); }
+#brushrow input { width:80px; border:0; background:none; }
+#hud { position:absolute; right:8px; top:8px; z-index:5; padding:5px 10px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); font-size:12px; font-variant-numeric:tabular-nums; pointer-events:none; }
+#hint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); z-index:5; padding:4px 12px; border-radius:14px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; pointer-events:none; white-space:nowrap; }
+#toasts { position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:30; display:flex; flex-direction:column; gap:6px; align-items:center; pointer-events:none; }
+.toast { padding:6px 14px; border-radius:16px; background:rgba(20,25,32,.88); color:#fff; font-size:12.5px; box-shadow:0 4px 14px rgba(0,0,0,.4); animation:tin .2s ease-out; transition:opacity .4s; }
+@keyframes tin { from { opacity:0; transform:translateY(-6px); } }
+#intro { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); z-index:12; width:min(440px, calc(100% - 24px)); padding:14px 16px; border-radius:12px; background:color-mix(in srgb, var(--panel) 88%, transparent); backdrop-filter:blur(10px); border:1px solid var(--line); line-height:1.8; box-shadow:0 8px 28px rgba(0,0,0,.4); }
+#intro button { margin-top:8px; }
+#speeds { gap:2px; } #speeds button { padding:3px 8px; } #speeds button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+@media (max-width: 800px) {
+  #mapwrap { flex-direction:column; background:transparent; border:0; overflow:visible; } #map { border-radius:8px; }
+  #quickbar { position:static; flex-direction:column-reverse; max-height:none; width:100%; margin-top:6px; }
+  #toolbtns { flex-direction:row; overflow-x:auto; } #toolbtns button { flex-direction:column; gap:0; padding:4px 8px; min-width:46px; align-items:center; } #toolbtns button span { font-size:10px; white-space:nowrap; }
+  #brushrow { align-self:flex-start; } #hint { bottom:auto; top:6px; font-size:11px; } #hud { top:30px; right:6px; font-size:11px; }
+  #mapwrap { flex:0 0 auto; position:relative; } #map { height:auto; width:100%; }
+  #hint, #hud, #toasts { position:absolute; }
+}
 </style>
 </head>
 <body>
 <div id="app">
   <header>
     <h1>진화 시뮬레이터</h1>
-    <div class="grp"><button id="play">▶ 재생</button><button id="step">1틱</button></div>
-    <div class="grp"><label for="speed">속도</label><input id="speed" type="range" min="0" max="100" value="30" /><span id="speedv">×5</span>
-      <label><input id="max" type="checkbox" /> 최대</label><label><input id="render" type="checkbox" checked /> 렌더</label></div>
-    <div class="grp" id="panelbtns"><button data-panel="tools">도구</button><button data-panel="viewpanel">표시</button><button data-panel="side">분석</button><button data-panel="filepanel">파일</button></div>
+    <div class="grp"><button id="play" title="재생/일시정지 (Space)">▶ 재생</button><button id="step" title="한 틱만 진행">⏭ 1틱</button></div>
+    <div class="grp" id="speeds" title="시뮬레이션 속도 (×1 = 초당 30틱)"><button data-s="1" class="on">×1</button><button data-s="5">×5</button><button data-s="25">×25</button><button data-s="100">×100</button><button data-s="max" title="렌더를 줄이고 가능한 한 빨리">⚡최대</button></div>
+    <label class="grp" title="끄면 계산만 하고 화면은 그리지 않아 더 빨라져요"><input id="render" type="checkbox" checked /> 화면 그리기</label>
+    <div class="grp" id="panelbtns"><button data-panel="tools" title="전역 슬라이더, 기후 이벤트, 스냅샷">🌍 환경</button><button data-panel="viewpanel" title="배경·개체 색 보기 방식">👁 표시</button><button data-panel="side" title="그래프, 종·계통수, 개체 정보, 개입 로그">📊 분석</button><button data-panel="filepanel" title="새 월드, 저장, 불러오기">💾 파일</button></div>
     <div id="readout">틱 0 · 개체 0</div>
   </header>
 
   <aside id="tools" class="panel">
-    <h3>도구 (환경에만 작용)</h3>
-    <div class="tools" id="toolbtns">
-      <button data-tool="inspect" class="on">개체 보기</button>
-      <button data-tool="terrain0">평지</button>
-      <button data-tool="terrain1">물</button>
-      <button data-tool="terrain2">산</button>
-      <button data-tool="biome">바이옴</button>
-      <button data-tool="foodUp">음식 +</button>
-      <button data-tool="foodDown">음식 −</button>
-      <button data-tool="meteor" class="danger">운석</button>
-      <button data-tool="plague" class="danger">역병</button>
-    </div>
-    <div class="row"><label>브러시 반경</label><input id="brush" type="range" min="1" max="20" value="4" /><span class="v" id="brushv">4</span></div>
+    <div class="note">개체는 볼 수만 있고, 모든 개입은 환경에만 작용해요.</div>
+    <h3>바이옴 브러시 설정</h3>
+    <div class="note">지도 왼쪽 도구에서 🌱 바이옴을 고르고 칠하세요.</div>
     <div class="row"><label>바이옴 식물</label><select id="bplant"><option value="-1">변경 안 함</option><option value="0">식물 A</option><option value="1">식물 B</option><option value="2">식물 C</option></select></div>
     <div class="row"><label>기온대</label><select id="bzone"><option value="-1">변경 안 함</option><option value="0">한랭</option><option value="1">온난</option><option value="2">고온</option></select></div>
-    <div class="note" id="tooldesc">개체는 클릭해서 보기만 가능. 개입은 환경에만.</div>
+    <div class="note" id="tooldesc"></div>
 
     <h3>전역 슬라이더</h3>
     <div class="row"><label>햇빛량</label><input id="gSun" type="range" min="0" max="3" step="0.05" value="1" /><span class="v" id="gSunv">1</span></div>
@@ -117,8 +131,26 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
   </aside>
 
   <main id="center">
-    <div id="mapwrap"><canvas id="map" width="896" height="672"></canvas></div>
-    <div id="viewbar"><span id="hover">—</span></div>
+    <div id="mapwrap"><canvas id="map" width="896" height="672"></canvas>
+    <div id="quickbar" role="toolbar" aria-label="환경 도구">
+      <div id="toolbtns">
+        <button data-tool="inspect" class="on" title="개체 보기"><i>🔍</i><span>보기</span></button>
+        <button data-tool="terrain0" title="평지로 칠하기 (장벽 허물기)"><i>🟩</i><span>평지</span></button>
+        <button data-tool="terrain1" title="물로 칠하기"><i>🌊</i><span>물</span></button>
+        <button data-tool="terrain2" title="산으로 칠하기"><i>⛰️</i><span>산</span></button>
+        <button data-tool="biome" title="식물 종/기온대 칠하기"><i>🌱</i><span>바이옴</span></button>
+        <button data-tool="foodUp" title="음식(햇빛 유입) 늘리기"><i>➕</i><span>음식</span></button>
+        <button data-tool="foodDown" title="음식(햇빛 유입) 줄이기"><i>➖</i><span>음식</span></button>
+        <button data-tool="meteor" class="danger" title="클릭한 곳에 운석"><i>☄️</i><span>운석</span></button>
+        <button data-tool="plague" class="danger" title="클릭한 곳에 역병"><i>🦠</i><span>역병</span></button>
+      </div>
+      <div id="brushrow" title="브러시 반경"><span>⭕</span><input id="brush" type="range" min="1" max="20" value="4" /><span id="brushv">4</span></div>
+    </div>
+    <div id="hud"></div>
+    <div id="hint">개체를 클릭하면 정보가 보여요</div>
+    <div id="toasts"></div>
+    <div id="intro"><b>처음이라면</b><br>① 왼쪽 도구로 지도를 칠하거나 ☄️🦠를 눌러보세요 (개체는 건드릴 수 없어요)<br>② 🔍로 개체를 클릭하면 뇌·계보를 볼 수 있어요<br>③ 📊 분석에서 그래프·종·계통수를 보세요<br>④ 개입하면 직전 상태가 저장돼서 🌍 환경 → 분기 비교로 "안 한 세계"와 나란히 볼 수 있어요<br><button id="introClose">알겠어요</button></div>
+    </div>
     <div id="branch" class="panel">
       <div class="row"><b>분기 비교</b><span class="note" id="branchinfo"></span><span style="flex:1"></span><button id="branchClose">닫기</button></div>
       <div class="two"><div><div class="note">A: 개입 안 한 버전</div><canvas class="m" id="mapA" width="512" height="384"></canvas></div>

@@ -27,15 +27,16 @@ let lastFrame: FrameMsg | null = null;
 let branch: Branch | null = null;
 
 client.onMsg = (m: FromWorker) => {
-  if (m.t === 'frame') { mv.setFrame(m); lastFrame = m; dirty = true; running = m.running; $('play').textContent = running ? '⏸ 일시정지' : '▶ 재생';
+  if (m.t === 'frame') { mv.setFrame(m); lastFrame = m; dirty = true; running = m.running; $('play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; $('play').classList.toggle('on', !running);
     $('readout').textContent = `틱 ${m.tick} · 개체 ${m.pop} · ${m.tps.toFixed(0)} tick/s`; }
   else if (m.t === 'stats') {
     if (m.from === 0) hist = { cols: m.cols, rows: [] }; else hist.rows.length = m.from;
     for (const r of m.rows) hist.rows.push(r);
     if (m.spHistFrom === 0) spHist = []; else spHist.length = m.spHistFrom;
     for (const r of m.spHist) spHist.push(r);
-    st = m; chartsDirty = true;
-  } else if (m.t === 'snaps') { snapMetas = m.list; renderSnaps(); }
+    if (st && m.events.length > st.events.length) toast('💀 전멸! 랜덤 게놈으로 재시작했어요', 4000);
+    st = m; chartsDirty = true; updateHud();
+  } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length) toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); snapMetas = m.list; renderSnaps(); }
   else if (m.t === 'inspect') { insp = m.data; renderInspect(); }
   else if (m.t === 'snap') {
     if (m.purpose === 'save') {
@@ -46,13 +47,22 @@ client.onMsg = (m: FromWorker) => {
 };
 
 // ── 헤더 컨트롤 ──
-const speedMult = () => Math.max(1, Math.round(Math.pow(100, +($('speed') as HTMLInputElement).value / 100)));
+let speedSel = '5';
+const speedMult = () => (speedSel === 'max' ? 100 : +speedSel);
+const isMax = () => speedSel === 'max';
 function sendSpeed() {
-  const mult = speedMult(), max = ($('max') as HTMLInputElement).checked, render = ($('render') as HTMLInputElement).checked;
-  $('speedv').textContent = max ? '최대' : `×${mult}`;
+  const mult = speedMult(), max = isMax(), render = ($('render') as HTMLInputElement).checked;
   client.send({ t: 'speed', mult, max, render }); branch?.setSpeed(mult, max, render);
 }
-$('speed').oninput = sendSpeed; $('max').onchange = sendSpeed; $('render').onchange = sendSpeed;
+document.querySelectorAll<HTMLButtonElement>('#speeds button').forEach((b) => b.onclick = () => {
+  speedSel = b.dataset.s!; document.querySelectorAll('#speeds button').forEach((x) => x.classList.toggle('on', x === b)); sendSpeed();
+});
+($('speeds').querySelector('[data-s="5"]') as HTMLButtonElement).click();
+$('render').onchange = sendSpeed;
+function toast(msg: string, ms = 2600) {
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; $('toasts').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 450); }, ms);
+}
 $('play').onclick = () => { running = !running; client.send({ t: 'run', running }); branch?.run(running); };
 $('step').onclick = () => { client.send({ t: 'step', n: 1 }); };
 function newWorld() {
@@ -91,8 +101,12 @@ const DESC: Record<string, string> = {
   foodUp: '햇빛 유입 배율 +0.5 (에너지 회계상 유입량 조정).', foodDown: '햇빛 유입 배율 −0.5.',
   meteor: '클릭 지점에 운석: 범위 내 개체 사망, 사체 남김, 식물은 사체화, 일시적 황폐화.', plague: '클릭 지점에 병원체 방출. 전파·사망은 저항성과 행동이 결정.',
 };
+const HINT: Record<string, string> = {
+  inspect: '개체를 클릭하면 정보가 보여요', terrain0: '드래그해서 평지로 칠하기 (장벽 허물기)', terrain1: '드래그해서 물 칠하기 (건너기 힘든 장벽)', terrain2: '드래그해서 산 칠하기',
+  biome: '드래그해서 바이옴 칠하기 (🌍 환경 패널에서 종류 선택)', foodUp: '드래그해서 음식 늘리기', foodDown: '드래그해서 음식 줄이기', meteor: '클릭한 곳에 운석 떨어뜨리기', plague: '클릭한 곳에 역병 퍼뜨리기' };
 document.querySelectorAll<HTMLButtonElement>('#toolbtns button').forEach((b) => b.onclick = () => {
-  tool = b.dataset.tool!; document.querySelectorAll('#toolbtns button').forEach((x) => x.classList.toggle('on', x === b)); $('tooldesc').textContent = DESC[tool]; dirty = true;
+  tool = b.dataset.tool!; document.querySelectorAll('#toolbtns button').forEach((x) => x.classList.toggle('on', x === b)); $('tooldesc').textContent = DESC[tool]; $('hint').textContent = HINT[tool]; dirty = true;
+  if (tool === 'biome' && !$('tools').classList.contains('open')) (document.querySelector('#panelbtns [data-panel=tools]') as HTMLButtonElement).click();
 });
 const brushR = () => +($('brush') as HTMLInputElement).value;
 $('brush').oninput = () => { $('brushv').textContent = String(brushR()); };
@@ -108,6 +122,7 @@ function apply(x: number, y: number, first: boolean) {
   else if (tool === 'foodDown') iv = { kind: 'food', x, y, r, delta: -0.5 };
   else if (first && tool === 'meteor') iv = { kind: 'meteor', x, y, r: Math.max(r, 3) };
   else if (first && tool === 'plague') iv = { kind: 'plague', x, y, r: Math.max(r, 2) };
+  if (iv && first) { const T: Record<string, string> = { meteor: '☄️ 운석 투하', plague: '🦠 역병 방출', terrain: '지형 변경', biome: '바이옴 변경', food: '음식 배율 변경' }; toast(T[iv.kind] + ' · 직전 상태가 스냅샷으로 저장돼요'); }
   if (iv) { client.send({ t: 'iv', iv }); if (!running) client.send({ t: 'step', n: 1 }); }
 }
 canvas.onpointerdown = (e) => {
@@ -130,10 +145,10 @@ function selectTab(name: string) {
 for (const [id, key] of [['gSun', 'sun'], ['gTemp', 'meanTemp'], ['gAmp', 'seasonAmp'], ['gPer', 'seasonPeriod']] as const) {
   const el = $(id) as HTMLInputElement;
   el.oninput = () => { $(id + 'v').textContent = el.value; };
-  el.onchange = () => client.send({ t: 'iv', iv: { kind: 'global', [key]: +el.value } as Intervention });
+  el.onchange = () => { client.send({ t: 'iv', iv: { kind: 'global', [key]: +el.value } as Intervention }); toast('전역 값 변경 기록됨'); };
 }
-$('iceAge').onclick = () => client.send({ t: 'iv', iv: { kind: 'climate', delta: -Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } });
-$('warming').onclick = () => client.send({ t: 'iv', iv: { kind: 'climate', delta: Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } });
+$('iceAge').onclick = () => { toast('🧊 빙하기 시작 (서서히 기온 하강)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: -Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
+$('warming').onclick = () => { toast('🔥 온난화 시작 (서서히 기온 상승)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
 
 // ── 스냅샷/분기 ──
 function renderSnaps() {
@@ -159,7 +174,7 @@ function openBranch(snap: any, iv: Intervention | null) {
   branch = b; $('branchIv').textContent = iv ? `(개입: ${iv.kind})` : '(개입 미지정 → 아래 선택)';
   $('branchinfo').textContent = `틱 ${snap.tick}에서 분기, 같은 시드·같은 상태`;
   client.send({ t: 'run', running: false });
-  b.setSpeed(speedMult(), ($('max') as HTMLInputElement).checked, ($('render') as HTMLInputElement).checked); b.run(true);
+  b.setSpeed(speedMult(), isMax(), ($('render') as HTMLInputElement).checked); b.run(true);
   if (!iv) { // 개입이 없는 스냅샷이면 프리셋을 B에 적용
     const sel = document.createElement('select');
     sel.innerHTML = '<option value="">개입 선택…</option><option value="meteor">운석(중앙)</option><option value="plague">역병(중앙)</option><option value="ice">빙하기 −10℃</option><option value="warm">온난화 +10℃</option><option value="dark">햇빛 ×0.5</option><option value="bright">햇빛 ×2</option>';
@@ -172,7 +187,19 @@ function openBranch(snap: any, iv: Intervention | null) {
 }
 $('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').classList.remove('open'); };
 
+function updateHud() {
+  if (!st || !lastFrame) return;
+  const e = st.env, ph = ((lastFrame.tick / e.seasonPeriod) % 1 + 1) % 1;
+  const season = ph < 0.125 || ph >= 0.875 ? '🌸 봄' : ph < 0.375 ? '☀️ 여름' : ph < 0.625 ? '🍂 가을' : '❄️ 겨울';
+  const T = e.meanTemp + e.climShift + e.seasonAmp * Math.sin(2 * Math.PI * ph);
+  const r = hist.rows[hist.rows.length - 1], nA = r ? r[hist.cols.indexOf('nA')] : 0, nB = r ? r[hist.cols.indexOf('nB')] : 0;
+  $('hud').innerHTML = `${season} · ${T.toFixed(0)}℃ · 🧬 종 ${nA} <span title="(a) 게놈 거리 클러스터 / (b) 교배 가능 집단" style="opacity:.7">(교배집단 ${nB})</span>`;
+}
 // ── 개체 인스펙터 ──
+// 첫 실행 안내
+try { if (localStorage.getItem('evo-intro')) $('intro').style.display = 'none'; } catch { /* 저장소 사용 불가 */ }
+$('introClose').onclick = () => { $('intro').style.display = 'none'; try { localStorage.setItem('evo-intro', '1'); } catch { /* 무시 */ } };
+
 function renderInspect() {
   const d = insp; if (!d) { $('inspInfo').textContent = '정보 없음'; return; }
   $('inspInfo').innerHTML = `<b>#${d.id}</b> ${d.alive ? '생존' : '사망'} · 나이 ${d.age} · 종A <span class="chip" style="background:${speciesColor(d.species)}"></span>${d.species} · 종B ${d.speciesB} · ${d.mode}`
@@ -249,7 +276,6 @@ function frameLoop() {
     const o: ViewOpts = { bg: ($('vbg') as HTMLSelectElement).value as any, ind: ($('vind') as HTMLSelectElement).value as any, showInd: ($('vshow') as HTMLInputElement).checked, selected,
       brush: hoverPos && tool !== 'inspect' ? { ...hoverPos, r: brushR() } : null };
     if (($('render') as HTMLInputElement).checked) mv.draw(o); dirty = false;
-    if (hoverPos && lastFrame) { const cx = Math.floor(hoverPos.x), cy = Math.floor(hoverPos.y); $('hover').textContent = `(${cx}, ${cy})`; }
   }
   if (chartsDirty) { chartsDirty = false; drawCharts(); }
   requestAnimationFrame(frameLoop);
