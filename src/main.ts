@@ -80,12 +80,25 @@ $('load').onclick = () => $('file').click();
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') { e.preventDefault(); $('play').click(); } });
 
 // ── 반투명 패널 토글 ──
-document.querySelectorAll<HTMLButtonElement>('#panelbtns button').forEach((b) => b.onclick = () => {
+document.querySelectorAll<HTMLButtonElement>('[data-panel]').forEach((b) => b.onclick = () => {
   const el = $(b.dataset.panel!); const open = !el.classList.contains('open');
   if (open && window.matchMedia('(max-width: 800px)').matches) { document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open')); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on')); }
-  el.classList.toggle('open', open); b.classList.toggle('on', open); chartsDirty = true;
+  el.classList.toggle('open', open); document.querySelectorAll(`#panelbtns [data-panel]`).forEach((x) => x.classList.toggle('on', x.getAttribute('data-panel') === b.dataset.panel && open)); chartsDirty = true;
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open')); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on')); } });
+
+document.querySelectorAll<HTMLButtonElement>('.closebtn').forEach((b) => b.onclick = () => {
+  b.closest('.panel')!.classList.remove('open'); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on'));
+});
+// 모바일: 도구 모음과 파일 메뉴를 '환경' 시트 안으로 옮긴다 (지도 아래는 환경/표시/분석 목록)
+const mq = window.matchMedia('(max-width: 800px)');
+function layoutMobile() {
+  const q = $('quickbar'), fb = $('filepanelbody');
+  if (mq.matches) { $('tools').insertBefore(q, $('tools').children[2] ?? null); $('tools').appendChild(fb); }
+  else { $('mapwrap').appendChild(q); $('filepanel').appendChild(fb); }
+  dirty = true;
+}
+mq.addEventListener('change', layoutMobile); layoutMobile();
 
 // ── 탭 ──
 document.querySelectorAll<HTMLButtonElement>('#tabs button').forEach((b) => b.onclick = () => {
