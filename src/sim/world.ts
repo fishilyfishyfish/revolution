@@ -548,7 +548,7 @@ export class World {
   }
 
   private restart() {
-    const k = this.seedIndividuals(Math.max(20, Math.floor(this.cfg.initPop / 4)), false);
+    const k = this.seedIndividuals(Math.max(20, this.cfg.initPop), false);
     this.cnt.restarts++;
     this.events.push({ tick: this.tick, kind: 'extinction', info: k > 0 ? `랜덤 게놈 ${k}마리로 재시작` : '재시작 불가(식물 없음)' });
     if (k === 0) this.dead = true;

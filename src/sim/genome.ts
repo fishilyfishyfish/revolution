@@ -125,7 +125,7 @@ export function presetGenome(name: string, rng: Rng, base: Float32Array, out = n
 
 export function randomGenome(rng: Rng, out = new Float32Array(G)): Float32Array {
   // 전멸 후 재시작용 무작위 게놈. 유지비가 큰 선택 형질(갑옷·발톱·독·감각·단열·겨울잠·허용폭)은 0 쪽으로 치우친 분포(r²)에서 뽑는다.
-  const skew = new Set<number>([GENE.ARMOR, GENE.CLAW, GENE.TOXIN, GENE.SMELL, GENE.HEAR, GENE.TWID, GENE.INSUL, GENE.HIBER]);
+  const skew = new Set<number>([GENE.ARMOR, GENE.CLAW, GENE.TOXIN, GENE.SMELL, GENE.HEAR, GENE.TWID, GENE.INSUL, GENE.HIBER, GENE.SIZE, GENE.VMAX, GENE.VIS]);
   for (let i = 0; i < NT; i++) { const r = rng.next(); out[i] = skew.has(i) ? r * r : r; }
   for (let i = 0; i < NB; i++) out[BO + i] = rng.gauss() * 0.8;
   return out;
