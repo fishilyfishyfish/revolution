@@ -69,6 +69,13 @@ $('load').onclick = () => $('file').click();
 };
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') { e.preventDefault(); $('play').click(); } });
 
+// ── 반투명 패널 토글 ──
+document.querySelectorAll<HTMLButtonElement>('#panelbtns button').forEach((b) => b.onclick = () => {
+  const el = $(b.dataset.panel!); const open = !el.classList.contains('open');
+  el.classList.toggle('open', open); b.classList.toggle('on', open); chartsDirty = true;
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.querySelectorAll('.panel.open').forEach((x) => x.classList.remove('open')); document.querySelectorAll('#panelbtns button').forEach((x) => x.classList.remove('on')); } });
+
 // ── 탭 ──
 document.querySelectorAll<HTMLButtonElement>('#tabs button').forEach((b) => b.onclick = () => {
   document.querySelectorAll('#tabs button').forEach((x) => x.classList.toggle('on', x === b));
@@ -115,7 +122,8 @@ canvas.onpointermove = (e) => {
   }
 };
 canvas.onpointerup = () => { painting = false; }; canvas.onpointerleave = () => { hoverPos = null; dirty = true; };
-function selectTab(name: string) { (document.querySelector(`#tabs button[data-tab=${name}]`) as HTMLButtonElement).click(); }
+function selectTab(name: string) {
+  $('side').classList.add('open'); document.querySelector('#panelbtns [data-panel=side]')?.classList.add('on'); (document.querySelector(`#tabs button[data-tab=${name}]`) as HTMLButtonElement).click(); }
 
 for (const [id, key] of [['gSun', 'sun'], ['gTemp', 'meanTemp'], ['gAmp', 'seasonAmp'], ['gPer', 'seasonPeriod']] as const) {
   const el = $(id) as HTMLInputElement;
@@ -144,7 +152,7 @@ function renderSnaps() {
 }
 function openBranch(snap: any, iv: Intervention | null) {
   branch?.close();
-  $('branch').classList.add('on'); $('mapwrap').style.display = 'none';
+  $('branch').classList.add('open');
   const b = new Branch(snap, iv, $('mapA') as HTMLCanvasElement, $('mapB') as HTMLCanvasElement);
   branch = b; $('branchIv').textContent = iv ? `(개입: ${iv.kind})` : '(개입 미지정 → 아래 선택)';
   $('branchinfo').textContent = `틱 ${snap.tick}에서 분기, 같은 시드·같은 상태`;
@@ -160,7 +168,7 @@ function openBranch(snap: any, iv: Intervention | null) {
     $('branchIv').appendChild(sel);
   }
 }
-$('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').classList.remove('on'); $('mapwrap').style.display = ''; };
+$('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').classList.remove('open'); };
 
 // ── 개체 인스펙터 ──
 function renderInspect() {
