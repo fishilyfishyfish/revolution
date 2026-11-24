@@ -20,6 +20,7 @@ export const STAT_TRAITS: StatTrait[] = [
   { key: 'give', name: '자식 에너지 비율', lo: 0.15, hi: 0.7, get: (t) => t.give },
   { key: 'sex', name: '유성 성향', lo: 0, hi: 1, get: (t) => t.sex },
   { key: 'mut', name: '돌연변이율', lo: 0.003, hi: 0.15, get: (t) => t.mut },
+  { key: 'aq', name: '수생 적응', lo: 0, hi: 1, get: (t) => t.aq },
   { key: 'brain', name: '뇌 가중치 |w| 평균', lo: 0, hi: 3, get: (t, i) => { let s = 0; for (let k = 0; k < NB; k++) s += Math.abs(i.genome[BO + k]); return s / NB; } },
 ];
 const NBIN = 24;

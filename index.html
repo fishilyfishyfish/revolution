@@ -23,12 +23,13 @@ input[type=number] { width:80px; } input[type=range] { padding:0; }
   border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.35); }
 .panel.open { display:block; }
 #tools, #viewpanel, #filepanel { left:8px; width:280px; padding:10px; }
-#viewpanel { left:300px; width:250px; } #filepanel { left:300px; width:270px; }
+#viewpanel { left:300px; width:250px; } #filepanel { left:300px; width:310px; }
+.panel { overflow-x:hidden; }
 #side { right:8px; width:min(460px, calc(100vw - 16px)); }
 .panel h3 { font-size:12px; margin:10px 0 4px; color:var(--muted); letter-spacing:.02em; }
 .panel h3:first-child { margin-top:0; }
 .tools { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
-.row { display:flex; align-items:center; gap:6px; margin:4px 0; } .row label { flex:0 0 64px; color:var(--muted); } .row input[type=range] { flex:1; } .row .v { width:48px; text-align:right; font-variant-numeric:tabular-nums; }
+.row { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:4px 0; } .row label { flex:0 0 64px; color:var(--muted); } .row input[type=range] { flex:1; } .row .v { width:48px; text-align:right; font-variant-numeric:tabular-nums; }
 .note { color:var(--muted); font-size:11.5px; }
 #center { flex:1; min-height:0; min-width:0; display:flex; flex-direction:column; gap:4px; }
 #mapwrap { position:relative; flex:1; min-height:0; background:#000; border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; justify-content:center; align-items:center; }
@@ -140,7 +141,11 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
     <div class="row"><label><input id="vshow" type="checkbox" checked /> 개체 표시</label></div>
   </aside>
   <aside id="filepanel" class="panel">
-    <div id="filepanelbody"><h3>세계</h3>
+    <div id="filepanelbody"><h3>시작 생물종 (새 월드를 만들 때만 고름)</h3>
+    <div id="presets"></div>
+    <div class="row"><label>물 비율</label><select id="water"><option value="0.2">적게 (호수)</option><option value="0.38">보통</option><option value="0.52">많게 (수중 세계)</option></select></div>
+    <div class="note">시작 후에는 개체를 건드릴 수 없어요. 물고기는 물에서 시작하고 수초를 먹어요.</div>
+    <h3>세계</h3>
     <div class="row"><label for="seed">시드</label><input id="seed" type="number" value="1" /><select id="stage" title="기능 세트"><option value="7">전체</option><option value="4">뇌만(단계4)</option><option value="3">귀무 뇌(단계3)</option></select><button id="reset">새 월드</button></div>
     <div class="row"><button id="save">저장</button><button id="load">불러오기</button><input id="file" type="file" accept=".json" hidden /></div>
   </div>

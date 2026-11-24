@@ -59,7 +59,7 @@ for (let t = 1; t <= ticks; t++) {
 const rows = w.history.rows; const k = Math.max(1, Math.floor(rows.length * 0.1));
 const avg = (a: number[][], c: number) => a.reduce((s, r) => s + r[c], 0) / a.length;
 say('## 형질 평균 (초기 10% 구간 → 마지막 10% 구간, 개체 간 표준편차 대비 이동)');
-for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'brain']) {
+for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'aq', 'brain']) {
   const c = col('m_' + name), s = col('s_' + name);
   const a = avg(rows.slice(0, k), c), b = avg(rows.slice(-k), c), sd = avg(rows.slice(-k), s) || 1e-9;
   say(`${name.padEnd(6)} ${a.toFixed(3)} → ${b.toFixed(3)}  (Δ=${(b - a).toFixed(3)}, ${((b - a) / sd).toFixed(2)}σ)`);

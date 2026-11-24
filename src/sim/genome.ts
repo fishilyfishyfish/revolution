@@ -8,9 +8,9 @@ export const W1 = 0, B1 = NIN * NH, W2 = B1 + NH, B2 = W2 + NH * NOUT, NB = B2 +
 // ── 게놈 레이아웃: [형질 16개][뇌 가중치 173개] ──
 export const GENE = {
   SIZE: 0, VMAX: 1, VIS: 2, ANG: 3, D0: 4, D1: 5, D2: 6, DM: 7, TOPT: 8, RES: 9,
-  THR: 10, GIVE: 11, SEX: 12, MUT: 13, HUE: 14, OSC: 15,
+  THR: 10, GIVE: 11, SEX: 12, MUT: 13, HUE: 14, OSC: 15, AQ: 16,
 } as const;
-export const NT = 16;
+export const NT = 17;
 export const BO = NT;
 export const G = NT + NB;
 export const TAU = Math.PI * 2;
@@ -19,7 +19,7 @@ export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '
   '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자'];
 export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호'];
 export const TRAIT_NAMES = ['몸 크기', '최대 속도', '시야 거리', '시야 각도', '식물A 소화', '식물B 소화', '식물C 소화',
-  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수'];
+  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응'];
 
 const c01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -30,6 +30,7 @@ export class Traits {
   tOpt = 0; res = 0; thr = 0; give = 0; sex = 0; mut = 0; hue = 0; osc = 0;
   maxReserve = 0; structE = 0; m075 = 0; basal = 0; visCost = 0; brainCost = 0;
   turnMax = 0; biteCap = 0; attackPow = 0; foodThr = 0;
+  aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
 
   decode(g: Float32Array, cfg: Config): this {
     this.size = 0.5 + 2.5 * c01(g[GENE.SIZE]);
@@ -50,6 +51,11 @@ export class Traits {
     this.mut = 0.003 * Math.pow(50, gm);
     this.hue = g[GENE.HUE];
     this.osc = 0.02 + 0.38 * c01(g[GENE.OSC]);
+    // 수생 적응: 물에서는 빠르고 싸게, 육지에서는 느리고 비싸게 (반대는 반대). 양쪽 이득 없는 만능은 없다.
+    const aq = c01(g[GENE.AQ]); this.aq = aq;
+    const sw = cfg.speedMul[1], cw = cfg.costMul[1];
+    this.spWater = sw + (1 - sw) * aq; this.spLand = 1 + (sw - 1) * aq;
+    this.cWater = cw + (1 - cw) * aq; this.cLand = 1 + (cw - 1) * aq;
     let wa = 0;
     for (let i = 0; i < NB; i++) wa += Math.abs(g[BO + i]);
     wa /= NB;
@@ -76,10 +82,26 @@ export function founderBrain(rng: Rng): Float32Array {
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.6)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
-  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5];
+  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.6;
+  return out;
+}
+
+// 창시 집단 프리셋 (새 월드 시작 때만 선택). 형질 값은 출발점일 뿐이고 이후 자유롭게 진화한다.
+export interface Preset { name: string; label: string; icon: string; water: boolean; traits: Partial<Record<keyof typeof GENE, number>> }
+export const PRESETS: Preset[] = [
+  { name: 'herb', label: '초식동물', icon: '🦌', water: false, traits: {} },
+  { name: 'omni', label: '잡식동물', icon: '🐗', water: false, traits: { D0: 0.3, D1: 0.3, D2: 0.3, DM: 0.3, SIZE: 0.45 } },
+  { name: 'predator', label: '육식동물', icon: '🐺', water: false, traits: { SIZE: 0.55, VMAX: 0.75, VIS: 0.65, ANG: 0.4, D0: 0.03, D1: 0.03, D2: 0.03, DM: 0.9 } },
+  { name: 'fish', label: '물고기', icon: '🐟', water: true, traits: { SIZE: 0.12, VMAX: 0.5, VIS: 0.5, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.8, DM: 0.14 } },
+  { name: 'fishpred', label: '수중 포식자', icon: '🦈', water: true, traits: { SIZE: 0.5, VMAX: 0.75, VIS: 0.65, ANG: 0.4, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.04, DM: 0.9 } },
+];
+export function presetGenome(name: string, rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
+  founderGenome(rng, base, out);
+  const pr = PRESETS.find((p) => p.name === name);
+  if (pr) for (const [k, v] of Object.entries(pr.traits)) out[GENE[k as keyof typeof GENE]] = c01(v! + rng.gauss() * 0.05);
   return out;
 }
 

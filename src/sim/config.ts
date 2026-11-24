@@ -29,7 +29,8 @@ export interface Config {
   pathogenDecay: number; pathogenDose: number;
   // 종
   dmax: number; dcluster: number; speciesInterval: number; statInterval: number;
-  maxPop: number; devastTicks: number; matureAge: number; genTerrain: boolean;
+  maxPop: number; devastTicks: number; matureAge: number; genTerrain: boolean; waterLevel: number;
+  founders: { preset: string; count: number }[] | null;
 }
 
 export function defaultConfig(over: Partial<Config> = {}): Config {
@@ -48,7 +49,7 @@ export function defaultConfig(over: Partial<Config> = {}): Config {
     infDuration: 150, infImmune: 100, infMetaMul: 1.5, contactR: 1.6, infBeta: 0.25,
     pathogenDecay: 0.97, pathogenDose: 0.2,
     dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
-    maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true,
+    maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true, waterLevel: 0.2, founders: null,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };
 }

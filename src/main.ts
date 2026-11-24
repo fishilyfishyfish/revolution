@@ -5,6 +5,7 @@ import { drawTree, SpRec } from './ui/tree';
 import { drawBrain } from './ui/brainview';
 import { Branch } from './ui/branch';
 import { STAT_TRAITS, MIN_SPECIES } from './sim/analysis';
+import { PRESETS } from './sim/genome';
 import { COST_NAMES } from './sim/world';
 import { CAUSE_NAMES } from './sim/lineage';
 import { snapshotFromJSON, snapshotToJSON } from './sim/snapshot';
@@ -67,10 +68,16 @@ function toastUnused(msg: string, ms = 2600) {
 }
 $('play').onclick = () => { running = !running; client.send({ t: 'run', running }); branch?.run(running); };
 $('step').onclick = () => { client.send({ t: 'step', n: 1 }); };
+const DEF: Record<string, [boolean, number]> = { herb: [true, 300], omni: [false, 100], predator: [false, 25], fish: [false, 250], fishpred: [false, 20] };
+$('presets').innerHTML = PRESETS.map((p) => `<div class="row"><label style="flex:1 1 auto"><input type="checkbox" data-p="${p.name}" ${DEF[p.name][0] ? 'checked' : ''}/> ${p.icon} ${p.label}</label><input type="number" data-n="${p.name}" value="${DEF[p.name][1]}" min="1" max="800" style="width:70px"/></div>`).join('');
 function newWorld() {
   const seed = +($('seed') as HTMLInputElement).value || 1, stage = +($('stage') as HTMLSelectElement).value;
+  const founders = PRESETS.filter((p) => ($('presets').querySelector(`[data-p=${p.name}]`) as HTMLInputElement).checked)
+    .map((p) => ({ preset: p.name, count: Math.max(1, +($('presets').querySelector(`[data-n=${p.name}]`) as HTMLInputElement).value || 1) }));
+  if (!founders.length) founders.push({ preset: 'herb', count: 300 });
+  const waterLevel = +($('water') as HTMLSelectElement).value;
   hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
-  client.send({ t: 'init', seed, stage }); client.send({ t: 'run', running: true }); sendSpeed();
+  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel } }); client.send({ t: 'run', running: true }); sendSpeed();
 }
 $('reset').onclick = newWorld;
 $('save').onclick = () => client.send({ t: 'getSnap', id: 0, purpose: 'save' });

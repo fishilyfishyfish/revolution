@@ -31,7 +31,7 @@ export class MapView {
     const d = this.img!.data, L = f.layers;
     for (let c = 0; c < w * h; c++) {
       let r: number, g: number, b: number; const t = m.terrain[c];
-      if (t === 1) { r = 28; g = 66; b = 130; }
+      if (t === 1) { r = 28; g = 66; b = 130; const a = (L[c * 5 + 2] / 255) * 0.7; r += 40 * a; g += 140 * a; b += 70 * a; }
       else if (t === 2) { r = 105; g = 105; b = 115; }
       else if (o.bg === 'plants') {
         r = 26; g = 32; b = 26;

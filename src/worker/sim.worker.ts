@@ -88,7 +88,7 @@ function inspect(id: number) {
   const t = ind.t; const b = w.inspectBrain(ind);
   const traits: Record<string, number> = { '몸 크기': t.size, '최대 속도': t.vmax, '시야 거리': t.vis, '시야 각도(°)': (t.ang * 180) / Math.PI,
     '식성 A': t.diet[0], '식성 B': t.diet[1], '식성 C': t.diet[2], '식성 고기': t.diet[3], '적정 기온': t.tOpt, '질병 저항': t.res,
-    '번식 임계': t.thr, '자식 에너지': t.give, '유성 성향': t.sex, '돌연변이율': t.mut, '색(hue)': t.hue, '진동수': t.osc,
+    '번식 임계': t.thr, '자식 에너지': t.give, '유성 성향': t.sex, '돌연변이율': t.mut, '색(hue)': t.hue, '진동수': t.osc, '수생 적응': t.aq,
     '기초대사/틱': t.basal, '뇌 유지비/틱': t.brainCost, '시야 유지비/틱': t.visCost };
   post({ t: 'inspect', data: {
     id, alive: true, x: ind.x, y: ind.y, age: ind.age, reserve: ind.reserve, maxReserve: t.maxReserve, structE: ind.structE, inf: ind.inf,

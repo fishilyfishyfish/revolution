@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { defaultConfig } from '../src/sim/config';
-import { World, INTERVENTION_KINDS, T_WATER } from '../src/sim/world';
+import { World, INTERVENTION_KINDS } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
-import { G, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
+import { G, NT, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
 import { Rng } from '../src/sim/rng';
 
 describe('원칙 점검', () => {
@@ -16,7 +16,7 @@ describe('원칙 점검', () => {
   });
   it('사체는 같은 셀 토양으로 분해되고 총량은 보존된다', () => {
     const w = World.create(defaultConfig({ w: 24, h: 24, seed: 1, initPop: 0 }));
-    w.terrain[5 * 24 + 5] = T_WATER; // 식물 성장이 없는 셀
+    w.terrain[5 * 24 + 5] = 2; // 산: 식물 성장이 없는 셀
     w.corpse[5 * 24 + 5] = 100; const s0 = w.soil[5 * 24 + 5];
     stepSim(w);
     const d = 100 * w.cfg.corpseDecay;
@@ -73,9 +73,35 @@ describe('유전/뇌', () => {
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
     expect([NIN, NH, NOUT]).toEqual([15, 8, 5]);
-    expect(G).toBe(16 + NB);
+    expect(G).toBe(NT + NB);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
     for (const v of out) expect(Math.abs(v)).toBeLessThanOrEqual(1);
   });
+});
+
+import { PRESETS, presetGenome } from '../src/sim/genome';
+import { STAGES } from '../src/sim/config';
+import { T_PLAIN } from '../src/sim/world';
+
+describe('시작 생물종 프리셋 / 수중 생태계', () => {
+  it('수생 적응: 물에서는 이득, 육지에서는 손해 (이득과 비용 동시)', () => {
+    const cfg = defaultConfig(); const rng = new Rng(3); const base = founderBrain(rng);
+    const land = presetGenome('herb', rng, base), fish = presetGenome('fish', rng, base);
+    const L = new Traits().decode(land, cfg), F = new Traits().decode(fish, cfg);
+    expect(F.spWater).toBeGreaterThan(L.spWater); expect(F.cWater).toBeLessThan(L.cWater);
+    expect(F.spLand).toBeLessThan(L.spLand); expect(F.cLand).toBeGreaterThan(L.cLand);
+  });
+  it('물고기는 물에서 시작하고 수초를 먹으며, 에너지는 보존된다', () => {
+    const w = World.create(defaultConfig({ w: 48, h: 36, seed: 2, waterLevel: 0.5, founders: [{ preset: 'fish', count: 80 }, { preset: 'herb', count: 40 }], features: STAGES[7] }));
+    const inWater = w.inds.filter((i) => w.terrain[(i.y | 0) * w.w + (i.x | 0)] === 1).length;
+    expect(inWater).toBeGreaterThanOrEqual(80);
+    for (let t = 0; t < 400; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+    }
+    let waterPlants = 0; for (let c = 0; c < w.n; c++) if (w.terrain[c] === 1) waterPlants += w.plants[2][c];
+    expect(waterPlants).toBeGreaterThan(0);
+  });
+  it('프리셋 목록', () => { expect(PRESETS.map((p) => p.name)).toEqual(['herb', 'omni', 'predator', 'fish', 'fishpred']); void T_PLAIN; });
 });

@@ -1,6 +1,6 @@
 import { Config, defaultConfig } from './config';
 import {
-  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, founderBrain, founderGenome, genomeDistance, mutate, randomGenome,
+  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, founderBrain, founderGenome, presetGenome, GENE, genomeDistance, mutate, randomGenome,
 } from './genome';
 import { CAUSE, Lineage } from './lineage';
 import { Rng } from './rng';
@@ -110,7 +110,10 @@ export class World {
     const cfg = defaultConfig(over);
     const w = new World(cfg);
     w.generate();
-    w.seedIndividuals(cfg.initPop, true);
+    const founders = cfg.founders ?? [{ preset: 'herb', count: cfg.initPop }];
+    let total = 0;
+    for (const f of founders) total += w.seedIndividuals(f.count, true, f.preset);
+    cfg.initPop = Math.max(total, cfg.founders ? 0 : cfg.initPop); // 재시작 규모 기준
     return w;
   }
 
@@ -135,7 +138,7 @@ export class World {
     const nt1 = this.noiseField(18), nt2 = this.noiseField(14), nd = this.noiseField(26), nz = this.noiseField(20);
     for (let i = 0; i < n; i++) {
       let t = T_PLAIN;
-      if (cfg.genTerrain) { if (nt1[i] < 0.2) t = T_WATER; else if (nt2[i] > 0.82) t = T_MOUNTAIN; }
+      if (cfg.genTerrain) { if (nt1[i] < cfg.waterLevel) t = T_WATER; else if (nt2[i] > 0.82) t = T_MOUNTAIN; }
       this.terrain[i] = t;
       if (cfg.features.biomes) {
         this.dom[i] = Math.min(2, Math.floor(nd[i] * 3));
@@ -145,17 +148,19 @@ export class World {
       } else { this.dom[i] = 0; this.zone[i] = 1; }
       this.soil[i] = cfg.soilInit;
       if (t === T_PLAIN) this.plants[this.dom[i]][i] = cfg.pMax * 0.4;
+      else if (t === T_WATER) this.plants[2][i] = cfg.pMax * 0.4; // 수초
     }
   }
 
   // 개체 N마리를 만든다. 에너지는 식물 재고에서 이전 (외부 생성 없음).
-  seedIndividuals(count: number, founder: boolean): number {
+  seedIndividuals(count: number, founder: boolean, preset = 'herb'): number {
     const cfg = this.cfg; const rng = this.rng;
     if (count <= 0) return 0;
     let plain: number[] = [];
     for (let i = 0; i < this.n; i++) if (this.terrain[i] === T_PLAIN) plain.push(i);
-    if (!plain.length) return 0;
-    if (founder) { // 창시 집단은 식물 A 우세·온난 지역에서 시작 (창시자 효과)
+    let waterCells: number[] = [];
+    for (let i = 0; i < this.n; i++) if (this.terrain[i] === T_WATER) waterCells.push(i);
+    if (founder && preset === 'herb') { // 기본 창시 집단은 식물 A 우세·온난 지역에서 시작 (창시자 효과)
       const home = plain.filter((i) => this.dom[i] === 0 && this.zone[i] === 1);
       if (home.length >= 100) plain = home;
     }
@@ -163,11 +168,13 @@ export class World {
     const created: Ind[] = [];
     const base = founder ? founderBrain(rng) : null;
     let need = 0;
+    if (!plain.length && !waterCells.length) return 0;
     for (let k = 0; k < count; k++) {
-      const g = founder ? founderGenome(rng, base!) : randomGenome(rng);
+      const g = founder ? presetGenome(preset, rng, base!) : randomGenome(rng);
       const ind = new Ind();
       ind.genome = g; ind.t.decode(g, cfg);
-      const c = plain[rng.int(plain.length)];
+      const pool = ind.t.aq > 0.5 && waterCells.length ? waterCells : plain.length ? plain : waterCells;
+      const c = pool[rng.int(pool.length)];
       ind.x = (c % this.w) + rng.next() * 0.999; ind.y = Math.floor(c / this.w) + rng.next() * 0.999;
       ind.a = rng.next() * TAU;
       ind.structE = ind.t.structE; ind.reserve = ind.t.maxReserve * 0.7;
@@ -251,8 +258,8 @@ export class World {
     switch (iv.kind) {
       case 'terrain':
         this.cellsIn(iv, (c) => {
-          if (iv.value !== T_PLAIN) { // 식물은 흙으로 되돌아간다 (에너지 보존)
-            for (let s = 0; s < NPLANT; s++) { this.soil[c] += this.plants[s][c]; this.plants[s][c] = 0; }
+          if (iv.value !== T_PLAIN) { // 식물은 흙으로 되돌아간다 (에너지 보존). 물에서는 수초(식물 C)만 남는다
+            for (let s = 0; s < (iv.value === T_WATER ? 2 : NPLANT); s++) { this.soil[c] += this.plants[s][c]; this.plants[s][c] = 0; }
           }
           this.terrain[c] = iv.value;
         });
@@ -533,14 +540,16 @@ export class World {
     ind.v = v;
     const c0 = this.cellOf(ind.x, ind.y);
     const terr = this.terrain[c0];
-    const sp = v * cfg.speedMul[terr];
+    const spm = terr === T_WATER ? t.spWater : terr === T_PLAIN ? t.spLand : cfg.speedMul[2];
+    const cstm = terr === T_WATER ? t.cWater : terr === T_PLAIN ? t.cLand : cfg.costMul[2];
+    const sp = v * spm;
     let nx = ind.x + Math.cos(ind.a) * sp, ny = ind.y + Math.sin(ind.a) * sp;
     if (nx < 0 || nx >= this.w) { ind.a = Math.PI - ind.a; nx = nx < 0 ? 0 : this.w - 0.001; }
     if (ny < 0 || ny >= this.h) { ind.a = -ind.a; ny = ny < 0 ? 0 : this.h - 0.001; }
     ind.x = nx; ind.y = ny;
     // 대사 (전부 열손실)
     const dT = this.tempAt(c0) - t.tOpt;
-    const move = cfg.cMove * t.mass * v * v * cfg.costMul[terr];
+    const move = cfg.cMove * t.mass * v * v * cstm;
     const therm = cfg.cTherm * dT * dT * t.m075;
     const base = t.basal + move + t.visCost + therm + t.brainCost;
     const extra = ind.inf > 0 ? base * cfg.infMetaMul : 0;
@@ -695,7 +704,8 @@ export class World {
       const cp = corpse[c];
       if (cp > 0) { const d = cp * dec; corpse[c] = cp - d; soil[c] += d; }
       if (this.pathogen[c] > 0) { this.pathogen[c] *= pd; if (this.pathogen[c] < 0.01) this.pathogen[c] = 0; }
-      if (this.terrain[c] !== T_PLAIN) continue;
+      const tr = this.terrain[c];
+      if (tr === T_MOUNTAIN) continue;
       // 노화 → 토양
       const a0 = P0[c], a1 = P1[c], a2 = P2[c];
       let l0 = a0 * sen, l1 = a1 * sen, l2 = a2 * sen;
@@ -709,6 +719,7 @@ export class World {
         const base = sunBase * this.sunMul[c] * (1 - x) * (0.35 + 0.65 * Math.min(1, 3 * x)) * dvf * (S / (S + half));
         const z = this.zone[c], d = this.dom[c], rz = resp[z];
         let g0 = base * (d === 0 ? 1 : off) * rz[0], g1 = base * (d === 1 ? 1 : off) * rz[1], g2 = base * (d === 2 ? 1 : off) * rz[2];
+        if (tr === T_WATER) { g0 = 0; g1 = 0; g2 = base * (rz[2] > 0.6 ? rz[2] : 0.6); } // 수초만 자란다
         let g = g0 + g1 + g2;
         const need = nu * g;
         if (need > S) { const k = S / need; g0 *= k; g1 *= k; g2 *= k; g *= k; }
