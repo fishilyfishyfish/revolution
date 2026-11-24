@@ -18,14 +18,14 @@ export interface Snapshot {
   history: World['history']; spHist: World['spHist']; hists: World['hists']; dead: boolean;
 }
 
-const NF = 13;
+const NF = 14;
 export function serialize(w: World): Snapshot {
   const n = w.inds.length;
   const num = new Float64Array(n * NF), gen = new Float32Array(n * G);
   w.inds.forEach((i, k) => {
     const o = k * NF;
     num[o] = i.id; num[o + 1] = i.x; num[o + 2] = i.y; num[o + 3] = i.a; num[o + 4] = i.v; num[o + 5] = i.reserve;
-    num[o + 6] = i.structE; num[o + 7] = i.age; num[o + 8] = i.species; num[o + 9] = i.speciesB; num[o + 10] = i.inf; num[o + 11] = i.birth; num[o + 12] = i.rec;
+    num[o + 6] = i.structE; num[o + 7] = i.age; num[o + 8] = i.species; num[o + 9] = i.speciesB; num[o + 10] = i.inf; num[o + 11] = i.birth; num[o + 12] = i.rec; num[o + 13] = i.hurt;
     gen.set(i.genome, k * G);
   });
   const packSp = (a: SpeciesRec[]) => a.map((s) => ({ ...s, centroid: s.centroid ? s.centroid.slice() : null }));
@@ -64,7 +64,7 @@ export function deserialize(s: Snapshot): World {
     const o = k * NF; const i = new Ind();
     i.id = s.indNum[o]; i.x = s.indNum[o + 1]; i.y = s.indNum[o + 2]; i.a = s.indNum[o + 3]; i.v = s.indNum[o + 4];
     i.reserve = s.indNum[o + 5]; i.structE = s.indNum[o + 6]; i.age = s.indNum[o + 7];
-    i.species = s.indNum[o + 8]; i.speciesB = s.indNum[o + 9]; i.inf = s.indNum[o + 10]; i.birth = s.indNum[o + 11]; i.rec = s.indNum[o + 12];
+    i.species = s.indNum[o + 8]; i.speciesB = s.indNum[o + 9]; i.inf = s.indNum[o + 10]; i.birth = s.indNum[o + 11]; i.rec = s.indNum[o + 12]; i.hurt = s.indNum[o + 13];
     i.genome = s.indGenome.slice(k * G, (k + 1) * G);
     i.t = new Traits().decode(i.genome, w.cfg);
     w.inds.push(i);

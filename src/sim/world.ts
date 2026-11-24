@@ -28,7 +28,7 @@ export class Ind {
   id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0;
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
-  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
+  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
 }
 
 export interface SpeciesRec {
@@ -348,31 +348,40 @@ export class World {
     if (pb) this.cnt.sexBirths++; else this.cnt.asexBirths++;
   }
 
+  // 한배 새끼 수(clutch): 투자액 T를 n마리가 나눠 갖는다. 새끼당 몫이 구조 에너지에 못 미치면 마릿수를 줄인다.
+  private brood(parents: Ind[], n: number, T: number, mutSigma: number, make: (g: Float32Array) => void) {
+    const cfg = this.cfg;
+    let nn = n;
+    const refStruct = parents[0].t.structE;
+    while (nn > 1 && T / nn < refStruct * 1.3) nn--;
+    const share = T / nn; let spent = 0;
+    for (let k = 0; k < nn; k++) {
+      if (this.inds.length + this.born.length >= cfg.maxPop) break;
+      const g = this.tmpG; make(g); mutate(g, mutSigma, this.rng);
+      const tc = this.tmpT.decode(g, cfg);
+      if (share < tc.structE * 1.15) break;
+      const childRes = Math.min(share - tc.structE, tc.maxReserve);
+      spent += tc.structE + childRes;
+      this.spawnChild(parents[0], parents[1] ?? null, g, tc, childRes);
+    }
+    return spent;
+  }
+
   private birthAsex(p: Ind) {
     if (this.inds.length + this.born.length >= this.cfg.maxPop) return;
     if (p.t.give * p.reserve < p.t.structE * 1.05) return;
-    const g = this.tmpG; g.set(p.genome); mutate(g, p.t.mut, this.rng);
-    const tc = this.tmpT.decode(g, this.cfg);
     const T = p.t.give * p.reserve;
-    if (T < tc.structE * 1.15) return;
-    const childRes = Math.min(T - tc.structE, tc.maxReserve);
-    p.reserve -= tc.structE + childRes;
-    this.spawnChild(p, null, g, tc, childRes);
+    p.reserve -= this.brood([p], p.t.clutchMax, T, p.t.mut, (g) => g.set(p.genome));
   }
 
-  private birthSex(a: Ind, b: Ind) {
+  private birthSex(a: Ind, b: Ind, d = 0) {
     if (this.inds.length + this.born.length >= this.cfg.maxPop) return;
-    const g = this.tmpG;
-    crossover(g, a.genome, b.genome, this.rng);
-    mutate(g, 0.5 * (a.t.mut + b.t.mut), this.rng);
-    const tc = this.tmpT.decode(g, this.cfg);
     const Ta = 0.5 * a.t.give * a.reserve, Tb = 0.5 * b.t.give * b.reserve; // 양쪽이 분담
     const T = Ta + Tb;
-    if (T < tc.structE * 1.15) return;
-    const childRes = Math.min(T - tc.structE, tc.maxReserve);
-    const sc = (tc.structE + childRes) / T;
-    a.reserve -= Ta * sc; b.reserve -= Tb * sc;
-    this.spawnChild(a, b, g, tc, childRes);
+    const n = Math.max(1, Math.floor((a.t.clutchMax + b.t.clutchMax) / 2));
+    const spent = this.brood([a, b], n, T, 0.5 * (a.t.mut + b.t.mut), (g) => crossover(g, a.genome, b.genome, this.rng));
+    if (spent > 0) { const sc = spent / T; a.reserve -= Ta * sc; b.reserve -= Tb * sc; }
+    void d;
   }
 
   // ───────────── 감각 ─────────────
@@ -384,10 +393,11 @@ export class World {
     const ix = ind.x | 0, iy = ind.y | 0;
     const p0 = this.plants[0], p1 = this.plants[1], p2 = this.plants[2], corpse = this.corpse;
     let fp = false, fc = false;
+    const Rm = R > t.smellR ? R : t.smellR; // 후각: 시야 밖(전방위)에서도 감지
     for (let k = 0; k < OFF_N; k++) {
-      const d = OFF_D[k]; if (d > R) break;
+      const d = OFF_D[k]; if (d > Rm) break;
       const dx = OFF_X[k], dy = OFF_Y[k];
-      if (k > 0 && !full && dx * ca + dy * sa < d * cosHalf) continue;
+      if (d > t.smellR && (d > R || (k > 0 && !full && dx * ca + dy * sa < d * cosHalf))) continue;
       const cx = ix + dx, cy = iy + dy;
       if (cx < 0 || cy < 0 || cx >= w || cy >= h) continue;
       const c = cy * w + cx;
@@ -396,23 +406,24 @@ export class World {
         if (a0 + a1 + a2 >= t.foodThr) {
           fp = true;
           let rel = dx === 0 && dy === 0 ? 0 : Math.atan2(dy, dx) - ind.a; rel -= TAU * Math.round(rel / TAU);
-          inp[0] = rel / Math.PI; inp[1] = 1 - d / R;
+          inp[0] = rel / Math.PI; inp[1] = 1 - d / Rm;
           inp[2] = a0 >= a1 && a0 >= a2 ? -1 : a1 >= a2 ? 0 : 1;
         }
       }
       if (!fc && corpse[c] >= t.foodThr) {
         fc = true;
         let rel = dx === 0 && dy === 0 ? 0 : Math.atan2(dy, dx) - ind.a; rel -= TAU * Math.round(rel / TAU);
-        inp[3] = rel / Math.PI; inp[4] = 1 - d / R;
+        inp[3] = rel / Math.PI; inp[4] = 1 - d / Rm;
       }
       if (fp && fc) break;
     }
     // 가장 가까운 개체 (시야 안)
-    let best = -1, bd2 = R * R;
+    const Rn = R > t.hearR ? R : t.hearR, hear2 = t.hearR * t.hearR, R2 = R * R;
+    let best = -1, bd2 = Rn * Rn;
     if (hashed) {
       const nbx = this.nbx, nby = this.nby;
-      const bx0 = Math.max(0, Math.floor((ind.x - R) / BS)), bx1 = Math.min(nbx - 1, Math.floor((ind.x + R) / BS));
-      const by0 = Math.max(0, Math.floor((ind.y - R) / BS)), by1 = Math.min(nby - 1, Math.floor((ind.y + R) / BS));
+      const bx0 = Math.max(0, Math.floor((ind.x - Rn) / BS)), bx1 = Math.min(nbx - 1, Math.floor((ind.x + Rn) / BS));
+      const by0 = Math.max(0, Math.floor((ind.y - Rn) / BS)), by1 = Math.min(nby - 1, Math.floor((ind.y + Rn) / BS));
       const inds = this.inds;
       for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
         const b = by * nbx + bx;
@@ -421,7 +432,8 @@ export class World {
           if (o === ind || !o.alive) continue;
           const dx = o.x - ind.x, dy = o.y - ind.y, d2 = dx * dx + dy * dy;
           if (d2 >= bd2) continue;
-          if (!full && dx * ca + dy * sa < Math.sqrt(d2) * cosHalf) continue;
+          // 청각: 시야 밖이라도 hearR 안이면 감지
+          if (d2 > hear2 && (d2 > R2 || (!full && dx * ca + dy * sa < Math.sqrt(d2) * cosHalf))) continue;
           bd2 = d2; best = this.bItems[q];
         }
       }
@@ -430,10 +442,11 @@ export class World {
       const o = this.inds[best];
       const dx = o.x - ind.x, dy = o.y - ind.y;
       let rel = Math.atan2(dy, dx) - ind.a; rel -= TAU * Math.round(rel / TAU);
-      inp[5] = rel / Math.PI; inp[6] = 1 - Math.sqrt(bd2) / R;
+      inp[5] = rel / Math.PI; inp[6] = 1 - Math.sqrt(bd2) / Rn;
       inp[7] = (o.t.size - 0.5) / 1.25 - 1; inp[8] = o.t.hue * 2 - 1;
       const gd = genomeDistance(ind.genome, o.genome);
       inp[9] = Math.max(0, 1 - gd / cfg.dmax);
+      inp[16] = o.t.claw * 2 - 1;
     }
     const c0 = this.cellOf(ind.x, ind.y);
     inp[10] = ind.reserve / t.maxReserve;
@@ -441,6 +454,8 @@ export class World {
     inp[12] = this.terrain[c0] * 0.5;
     inp[13] = noise ? this.rng.next() * 2 - 1 : 0;
     inp[14] = Math.sin(ind.age * t.osc);
+    inp[15] = ind.hurt;
+    { const dd = (t.tOpt - this.tempAt(c0)) / 20; inp[17] = dd < -1 ? -1 : dd > 1 ? 1 : dd; }
     return best;
   }
 
@@ -491,10 +506,11 @@ export class World {
         this.sense(ind, this.inp, true);
         brainForward(ind.genome, this.inp, this.hid, this.out);
         const o = this.out;
-        ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4];
+        ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6];
       } else { // 귀무 모형: 순수 난수 출력
         ind.oTurn = rng.next() * 2 - 1; ind.oAcc = rng.next() * 2 - 1; ind.oBite = rng.next() * 2 - 1;
         ind.oRep = rng.next() * 2 - 1; ind.oMate = rng.next() * 2 - 1;
+        ind.oGuard = rng.next() * 2 - 1; ind.oRest = rng.next() * 2 - 1;
       }
       if (F.reproduce) {
         if (ind.rec > 0) { // 짝 찾기 상태 유지: 신호(출력)가 켜진 틱에만 광고
@@ -544,11 +560,19 @@ export class World {
     ind.age++;
     // 이동
     ind.a += ind.oTurn * t.turnMax;
-    let v = ind.v * 0.8 + ind.oAcc * t.vmax * 0.4;
-    if (v < 0) v = 0; else if (v > t.vmax) v = t.vmax;
-    ind.v = v;
     const c0 = this.cellOf(ind.x, ind.y);
     const terr = this.terrain[c0];
+    const Tloc = this.tempAt(c0);
+    // 겨울잠(환경이 추울 때, 유전자) / 휴식·웅크림(뇌 출력). 겨울잠·휴식 중엔 움직이지도 먹지도 번식하지도 못한다.
+    const torpor = t.hiber > 0.05 && t.tOpt - Tloc > 14 - 12 * t.hiber;
+    const resting = ind.oRest > 0;
+    const guard = ind.oGuard > 0;
+    const still = torpor || resting;
+    let v = ind.v * 0.8 + ind.oAcc * t.vmax * 0.4;
+    if (v < 0) v = 0; else if (v > t.vmax) v = t.vmax;
+    if (still) v = 0; else if (guard) v *= 0.3;
+    ind.v = v;
+    if (ind.hurt > 0.001) ind.hurt *= 0.9; else ind.hurt = 0;
     const spm = terr === T_WATER ? t.spWater : terr === T_PLAIN ? t.spLand : cfg.speedMul[2];
     const cstm = terr === T_WATER ? t.cWater : terr === T_PLAIN ? t.cLand : cfg.costMul[2];
     const sp = v * spm;
@@ -557,10 +581,14 @@ export class World {
     if (ny < 0 || ny >= this.h) { ind.a = -ind.a; ny = ny < 0 ? 0 : this.h - 0.001; }
     ind.x = nx; ind.y = ny;
     // 대사 (전부 열손실)
-    const dT = this.tempAt(c0) - t.tOpt;
-    const move = cfg.cMove * t.mass * v * v * cstm;
-    const therm = cfg.cTherm * dT * dT * t.m075;
-    const base = t.basal + move + t.visCost + therm + t.brainCost;
+    const dT = Tloc - t.tOpt;
+    const move = cfg.cMove * t.mass * t.moveMul * v * v * cstm;
+    const exT = Math.abs(dT) > t.tolW ? Math.abs(dT) - t.tolW : 0; // 허용폭 안은 무료
+    const therm = cfg.cTherm * exT * exT * t.m075 * (1 - 0.6 * t.insul);
+    let base = t.basal + move + t.visCost + therm + t.brainCost;
+    if (guard) base += cfg.cAct * t.m075;
+    if (torpor) base *= 1 - 0.8 * t.hiber;
+    if (resting) base *= 0.6;
     const extra = ind.inf > 0 ? base * cfg.infMetaMul : 0;
     const total = base + extra;
     const paid = total < ind.reserve ? total : ind.reserve > 0 ? ind.reserve : 0;
@@ -574,14 +602,15 @@ export class World {
     if (this.mortality(ind, terr, dT)) return;
 
     // 먹기/공격
-    if (ind.oBite > 0) {
+    if (ind.oBite > 0 && !still) {
       this.pay(ind, cfg.cAct * t.m075, 5);
       if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
       this.bite(ind);
     }
 
     // 번식
-    if (ind.mode === MODE_ASEX) {
+    if (still) { /* 번식 불가 */ }
+    else if (ind.mode === MODE_ASEX) {
       if (this.ready(ind)) this.birthAsex(ind);
     } else if (ind.mode === MODE_SEX && !ind.mated) {
       this.pay(ind, cfg.cSignal, 5);
@@ -596,7 +625,7 @@ export class World {
     const cfg = this.cfg, t = ind.t, rng = this.rng;
     let h = 0, cause = 0;
     if (ind.age > t.lifespan) { const x = (ind.age - t.lifespan) / t.lifespan; const p = Math.min(1, cfg.ageHazard * x * x); h = p; cause = CAUSE.AGE; }
-    const ex = Math.abs(dT) - cfg.tempTol;
+    const ex = Math.abs(dT) - t.tempLethal;
     if (ex > 0) { const p = Math.min(1, cfg.tempHazard * ex); if (p > h) { h = p; cause = CAUSE.TEMP; } }
     if (terr === T_PLAIN && t.aq > 0.3) { const p = cfg.landHazard * (t.aq - 0.3) / 0.7; if (p > h) { h = p; cause = CAUSE.HABITAT; } }
     else if (terr === T_WATER && t.aq < 0.7) { const p = cfg.waterHazard * (0.7 - t.aq) / 0.7; if (p > h) { h = p; cause = CAUSE.HABITAT; } }
@@ -624,8 +653,11 @@ export class World {
         }
       }
       if (victim) {
-        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, t.attackPow * ind.oBite);
+        const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1); // 갑옷, 웅크림이 피해를 줄인다
+        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, (t.attackPow * ind.oBite) / shield);
         victim.reserve -= dmg;
+        victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / victim.t.maxReserve);
+        if (victim.t.toxin > 0.01) this.pay(ind, cfg.toxinK * victim.t.toxin * dmg, 5); // 독: 공격자 열손실
         const room = t.maxReserve - ind.reserve;
         const gain = Math.min(dmg * t.eff[3], room > 0 ? room : 0);
         ind.reserve += gain;
@@ -666,6 +698,9 @@ export class World {
         const dx = o.x - ind.x, dy = o.y - ind.y, d = Math.sqrt(dx * dx + dy * dy);
         if (d > t.radius + o.t.radius + 1.5 || d >= bd) continue;
         if (!this.ready(o)) continue;
+        // 까다로움: 게놈 거리가 먼 짝은 거른다 (헛수고 방지 ↔ 후보 감소)
+        const maxD = cfg.dmax * (1.05 - 0.75 * Math.max(t.picky, o.t.picky));
+        if (genomeDistance(ind.genome, o.genome) > maxD) continue;
         bd = d; partner = o;
       }
     }

@@ -72,7 +72,7 @@ describe('유전/뇌', () => {
     expect(genomeDistance(a, d)).toBeGreaterThan(0);
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
-    expect([NIN, NH, NOUT]).toEqual([15, 8, 5]);
+    expect([NIN, NH, NOUT]).toEqual([18, 8, 7]);
     expect(G).toBe(NT + NB);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
@@ -131,5 +131,31 @@ describe('에너지 외 사망 요인', () => {
     for (let t = 0; t < 300; t++) stepSim(w);
     const kids = w.inds.filter((i) => i.age < 3 && i.birth === w.tick - 1);
     for (const k of kids) expect(w.terrain[(k.y | 0) * w.w + (k.x | 0)]).toBe(1);
+  });
+});
+
+describe('세부 형질: 이득과 비용', () => {
+  const cfg = defaultConfig(); const rng = new Rng(9); const base = founderBrain(rng); const g0 = founderGenome(rng, base);
+  const dec = (k: keyof typeof GENE, v: number) => { const h = g0.slice(); h[GENE[k]] = v; return new Traits().decode(h, cfg); };
+  it('갑옷·발톱·독·단열·허용폭·겨울잠·수명은 유지비가 오른다', () => {
+    for (const k of ['ARMOR', 'CLAW', 'TOXIN', 'INSUL', 'TWID', 'HIBER', 'LONG'] as const) expect(dec(k, 1).basal, k).toBeGreaterThan(dec(k, 0).basal);
+  });
+  it('후각·청각은 반경이 클수록 유지비↑', () => {
+    expect(dec('SMELL', 1).visCost).toBeGreaterThan(dec('SMELL', 0).visCost);
+    expect(dec('HEAR', 1).visCost).toBeGreaterThan(dec('HEAR', 0).visCost);
+  });
+  it('이득 방향: 발톱→공격력, 허용폭→치사 기온, 한배 수→새끼 수', () => {
+    expect(dec('CLAW', 1).attackPow).toBeGreaterThan(dec('CLAW', 0).attackPow);
+    expect(dec('TWID', 1).tempLethal).toBeGreaterThan(dec('TWID', 0).tempLethal);
+    expect(dec('CLUTCH', 1).clutchMax).toBeGreaterThan(dec('CLUTCH', 0).clutchMax);
+    expect(dec('ARMOR', 1).moveMul).toBeGreaterThan(dec('ARMOR', 0).moveMul);
+  });
+  it('전 기능 장부 보존 (한배 새끼·겨울잠·독 포함)', () => {
+    const w = World.create(defaultConfig({ w: 40, h: 30, seed: 6, founders: [{ preset: 'herb', count: 80 }, { preset: 'predator', count: 20 }, { preset: 'fish', count: 40 }], features: STAGES[7] }));
+    for (const i of w.inds) { i.genome[GENE.CLUTCH] = 1; i.genome[GENE.TOXIN] = 0.8; i.genome[GENE.HIBER] = 0.9; i.t.decode(i.genome, w.cfg); }
+    for (let t = 0; t < 500; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+    }
   });
 });

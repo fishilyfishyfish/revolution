@@ -30,7 +30,7 @@ export interface Config {
   // 종
   dmax: number; dcluster: number; speciesInterval: number; statInterval: number;
   maxPop: number; devastTicks: number; matureAge: number; genTerrain: boolean; waterLevel: number;
-  cLong: number; ageHazard: number; tempTol: number; tempHazard: number; landHazard: number; waterHazard: number;
+  cSense: number; toxinK: number; cLong: number; ageHazard: number; tempTol: number; tempHazard: number; landHazard: number; waterHazard: number;
   founders: { preset: string; count: number }[] | null;
 }
 
@@ -51,7 +51,7 @@ export function defaultConfig(over: Partial<Config> = {}): Config {
     pathogenDecay: 0.97, pathogenDose: 0.2,
     dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
     maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true, waterLevel: 0.2, founders: null,
-    cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.02, waterHazard: 0.01,
+    cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.02, waterHazard: 0.01,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };
 }

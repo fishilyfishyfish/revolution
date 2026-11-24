@@ -22,6 +22,16 @@ export const STAT_TRAITS: StatTrait[] = [
   { key: 'mut', name: '돌연변이율', lo: 0.003, hi: 0.15, get: (t) => t.mut },
   { key: 'aq', name: '수생 적응', lo: 0, hi: 1, get: (t) => t.aq },
   { key: 'long', name: '수명(틱)', lo: 400, hi: 3000, get: (t) => t.lifespan },
+  { key: 'armor', name: '피부/갑옷', lo: 0, hi: 1, get: (t) => t.armor },
+  { key: 'claw', name: '이빨·발톱', lo: 0, hi: 1, get: (t) => t.claw },
+  { key: 'toxin', name: '독', lo: 0, hi: 1, get: (t) => t.toxin },
+  { key: 'smell', name: '후각 반경', lo: 0.5, hi: 6.5, get: (t) => t.smellR },
+  { key: 'hear', name: '청각 반경', lo: 0.5, hi: 6.5, get: (t) => t.hearR },
+  { key: 'twid', name: '기온 허용폭', lo: 3, hi: 12, get: (t) => t.tolW },
+  { key: 'insul', name: '단열', lo: 0, hi: 1, get: (t) => t.insul },
+  { key: 'hiber', name: '겨울잠', lo: 0, hi: 1, get: (t) => t.hiber },
+  { key: 'clutch', name: '한배 새끼 수', lo: 1, hi: 4, get: (t) => t.clutchMax },
+  { key: 'picky', name: '짝 까다로움', lo: 0, hi: 1, get: (t) => t.picky },
   { key: 'brain', name: '뇌 가중치 |w| 평균', lo: 0, hi: 3, get: (t, i) => { let s = 0; for (let k = 0; k < NB; k++) s += Math.abs(i.genome[BO + k]); return s / NB; } },
 ];
 const NBIN = 24;
