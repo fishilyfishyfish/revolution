@@ -98,12 +98,12 @@ export function founderBrain(rng: Rng): Float32Array {
   return b;
 }
 
-// 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.6)
+// 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.4)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
   const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
-  for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.6;
+  for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.4;
   return out;
 }
 

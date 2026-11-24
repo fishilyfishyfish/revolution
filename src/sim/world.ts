@@ -166,10 +166,11 @@ export class World {
     }
     let stock = 0; for (let s = 0; s < NPLANT; s++) for (let i = 0; i < this.n; i++) stock += this.plants[s][i];
     const created: Ind[] = [];
-    const base = founder ? founderBrain(rng) : null;
+    let base = founder ? founderBrain(rng) : null;
     let need = 0;
     if (!plain.length && !waterCells.length) return 0;
     for (let k = 0; k < count; k++) {
+      if (founder && k > 0 && k % 20 === 0) base = founderBrain(rng); // 20마리마다 다른 원형 뇌 (한 번의 운에 전멸하지 않도록 변이 확보)
       const g = founder ? presetGenome(preset, rng, base!) : randomGenome(rng);
       const ind = new Ind();
       ind.genome = g; ind.t.decode(g, cfg);
