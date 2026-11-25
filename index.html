@@ -127,6 +127,7 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
     <div class="row"><label>계절 진폭</label><input id="gAmp" type="range" min="0" max="20" step="0.5" value="8" /><span class="v" id="gAmpv">8</span></div>
     <div class="row"><label>계절 주기</label><input id="gPer" type="range" min="200" max="4000" step="50" value="1200" /><span class="v" id="gPerv">1200</span></div>
 
+    <div class="row"><label style="flex:1 1 auto" title="끄면 전멸했을 때 그대로 멈춰요"><input type="checkbox" id="respawn" checked /> 전멸하면 자동 재시작</label></div>
     <h3>기후 이벤트 (서서히 이동)</h3>
     <div class="row"><label>변화폭 ℃</label><input id="cDelta" type="number" value="10" /><label style="flex:0 0 40px">기간</label><input id="cDur" type="number" value="1500" /></div>
     <div class="tools"><button id="iceAge">빙하기</button><button id="warming">온난화</button></div>

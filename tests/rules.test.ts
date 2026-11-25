@@ -195,3 +195,18 @@ describe('단계 8: 뇌 구조 변이(NEAT식)', () => {
     expect(w2.checksum()).toBe(w.checksum());
   });
 });
+
+describe('전멸 시 자동 재시작 옵션', () => {
+  const mk = (on: boolean) => World.create(defaultConfig({ w: 32, h: 32, seed: 4, initPop: 60, restartOnExtinction: on, features: STAGES[7] }));
+  const wipeAll = (w: World) => { for (const i of w.inds) w.kill(i, CAUSE.METEOR); }; // 식물은 남기고 개체만 전멸
+  it('켜면 재시작, 끄면 멈춘다(재시작 0, dead)', () => {
+    const a = mk(true); wipeAll(a); for (let t = 0; t < 5; t++) stepSim(a);
+    expect(a.cnt.restarts).toBeGreaterThan(0); expect(a.inds.length).toBeGreaterThan(0);
+    const b = mk(false); wipeAll(b); for (let t = 0; t < 5; t++) stepSim(b);
+    expect(b.cnt.restarts).toBe(0); expect(b.inds.length).toBe(0); expect(b.dead).toBe(true);
+  });
+  it('실행 중 토글도 개입 로그에 기록된다', () => {
+    const w = mk(true); w.intervene({ kind: 'global', restartOnExtinction: false }); stepSim(w);
+    expect(w.cfg.restartOnExtinction).toBe(false); expect(w.log.some((e) => e.iv.kind === 'global')).toBe(true);
+  });
+});

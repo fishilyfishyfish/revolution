@@ -15,7 +15,7 @@ export type Intervention =
   | ({ kind: 'terrain'; value: 0 | 1 | 2 } & Shape)
   | ({ kind: 'biome'; plant?: number; zone?: number } & Shape)
   | ({ kind: 'food'; delta: number } & Shape)
-  | { kind: 'global'; sun?: number; meanTemp?: number; seasonAmp?: number; seasonPeriod?: number }
+  | { kind: 'global'; sun?: number; meanTemp?: number; seasonAmp?: number; seasonPeriod?: number; restartOnExtinction?: boolean }
   | ({ kind: 'meteor' } & Shape)
   | ({ kind: 'plague' } & Shape)
   | { kind: 'climate'; delta: number; duration: number };
@@ -279,6 +279,7 @@ export class World {
         if (iv.meanTemp !== undefined) this.meanTempG = iv.meanTemp;
         if (iv.seasonAmp !== undefined) this.seasonAmpG = iv.seasonAmp;
         if (iv.seasonPeriod !== undefined) this.seasonPeriodG = Math.max(50, iv.seasonPeriod);
+        if (iv.restartOnExtinction !== undefined) cfg.restartOnExtinction = iv.restartOnExtinction; // 개입 로그에 기록되므로 재현 가능
         break;
       case 'meteor':
         for (const ind of this.inds) if (ind.alive && this.inShape(iv, ind.x, ind.y)) this.kill(ind, CAUSE.METEOR);
@@ -550,7 +551,10 @@ export class World {
     for (let k = 0; k < 7; k++) this.cumCosts[k] += this.costs[k];
     this.tick++;
 
-    if (this.inds.length === 0 && !this.dead && cfg.initPop > 0) this.restart();
+    if (this.inds.length === 0 && !this.dead && cfg.initPop > 0) {
+      if (cfg.restartOnExtinction) this.restart();
+      else { this.dead = true; this.events.push({ tick: this.tick, kind: 'extinction', info: '전멸 (자동 재시작 꺼짐)' }); }
+    }
   }
 
   private restart() {

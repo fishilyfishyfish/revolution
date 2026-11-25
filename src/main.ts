@@ -77,7 +77,7 @@ function newWorld() {
   if (!founders.length) founders.push({ preset: 'herb', count: 300 });
   const waterLevel = +($('water') as HTMLSelectElement).value;
   hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
-  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, features: { neat: ($('neat') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
+  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, restartOnExtinction: ($('respawn') as HTMLInputElement).checked, features: { neat: ($('neat') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
 }
 $('reset').onclick = newWorld;
 $('save').onclick = () => client.send({ t: 'getSnap', id: 0, purpose: 'save' });
@@ -169,6 +169,7 @@ for (const [id, key] of [['gSun', 'sun'], ['gTemp', 'meanTemp'], ['gAmp', 'seaso
   el.oninput = () => { $(id + 'v').textContent = el.value; };
   el.onchange = () => { client.send({ t: 'iv', iv: { kind: 'global', [key]: +el.value } as Intervention }); toast('전역 값 변경 기록됨'); };
 }
+($('respawn') as HTMLInputElement).onchange = (e) => client.send({ t: 'iv', iv: { kind: 'global', restartOnExtinction: (e.target as HTMLInputElement).checked } });
 $('iceAge').onclick = () => { toast('🧊 빙하기 시작 (서서히 기온 하강)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: -Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
 $('warming').onclick = () => { toast('🔥 온난화 시작 (서서히 기온 상승)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
 
@@ -215,7 +216,8 @@ function updateHud() {
   const season = ph < 0.125 || ph >= 0.875 ? '🌸 봄' : ph < 0.375 ? '☀️ 여름' : ph < 0.625 ? '🍂 가을' : '❄️ 겨울';
   const T = e.meanTemp + e.climShift + e.seasonAmp * Math.sin(2 * Math.PI * ph);
   const r = hist.rows[hist.rows.length - 1], nA = r ? r[hist.cols.indexOf('nA')] : 0, nB = r ? r[hist.cols.indexOf('nB')] : 0;
-  $('hud').innerHTML = `${season} · ${T.toFixed(0)}℃ · 🧬 종 ${nA} <span title="(a) 게놈 거리 클러스터 / (b) 교배 가능 집단" style="opacity:.7">(교배집단 ${nB})</span>`;
+  const ext = lastFrame.pop === 0 ? '💀 전멸 · ' : '';
+  $('hud').innerHTML = `${ext}${season} · ${T.toFixed(0)}℃ · 🧬 종 ${nA} <span title="(a) 게놈 거리 클러스터 / (b) 교배 가능 집단" style="opacity:.7">(교배집단 ${nB})</span>`;
 }
 // ── 개체 인스펙터 ──
 // 첫 실행 안내
