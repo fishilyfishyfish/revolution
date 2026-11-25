@@ -51,7 +51,7 @@ export function defaultConfig(over: Partial<Config> = {}): Config {
     pathogenDecay: 0.97, pathogenDose: 0.2,
     dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
     maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true, waterLevel: 0.2, founders: null,
-    cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.02, waterHazard: 0.01,
+    cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.005, waterHazard: 0.005,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };
 }
