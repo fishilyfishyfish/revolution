@@ -456,6 +456,10 @@ export class World {
     inp[13] = noise ? this.rng.next() * 2 - 1 : 0;
     inp[14] = Math.sin(ind.age * t.osc);
     inp[15] = ind.hurt;
+    { // 앞쪽 지형: 진행 방향 (반지름+1.2) 앞의 지형. 물가/해안선을 미리 '볼' 수 있다
+      const ax = ind.x + ca * (t.radius + 1.2), ay = ind.y + sa * (t.radius + 1.2);
+      inp[18] = ax < 0 || ay < 0 || ax >= w || ay >= h ? 1 : this.terrain[(ay | 0) * w + (ax | 0)] * 0.5;
+    }
     { const dd = (t.tOpt - this.tempAt(c0)) / 20; inp[17] = dd < -1 ? -1 : dd > 1 ? 1 : dd; }
     return best;
   }

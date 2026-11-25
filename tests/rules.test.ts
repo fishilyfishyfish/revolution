@@ -72,7 +72,7 @@ describe('유전/뇌', () => {
     expect(genomeDistance(a, d)).toBeGreaterThan(0);
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
-    expect([NIN, NH, NOUT]).toEqual([18, 8, 7]);
+    expect([NIN, NH, NOUT]).toEqual([19, 8, 7]);
     expect(G).toBe(NT + NB);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
