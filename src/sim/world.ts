@@ -25,7 +25,7 @@ export interface LogEntry { tick: number; iv: Intervention }
 export interface EventRec { tick: number; kind: string; info?: string }
 
 export class Ind {
-  id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0;
+  id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0; f = 1; f075 = 1; // f: 성장 정도(현재 구조 에너지/성체)
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
   oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
@@ -66,6 +66,8 @@ export class World {
   // 환경 전역값 (개입으로 변경)
   sunG: number; meanTempG: number; seasonAmpG: number; seasonPeriodG: number;
   climShift = 0; climTarget = 0; climRate = 0;
+  strain = 0.5; // 병원체 균주(0~1). 인구의 면역형 평균을 뒤따라 움직인다 (빈도 의존 선택)
+  private prevP: Float64Array[] = [];
   // 장부
   cumIn = 0; cumOut = 0; tickIn = 0; tickOut = 0;
   costs = new Float64Array(7);
@@ -325,8 +327,10 @@ export class World {
     this.tickOut += a; this.costs[kind] += a;
   }
 
+  private rad(i: Ind) { return i.t.radius * (0.6 + 0.4 * i.f); }
+
   private ready(ind: Ind) {
-    return ind.age >= this.cfg.matureAge && ind.reserve >= ind.t.thr * ind.t.maxReserve;
+    return ind.f >= 0.95 && ind.age >= this.cfg.matureAge && ind.reserve >= ind.t.thr * ind.t.maxReserve * ind.f;
   }
 
   private spawnChild(pa: Ind, pb: Ind | null, g: Float32Array, tc: Traits, childRes: number) {
@@ -342,7 +346,8 @@ export class World {
       if (this.terrain[this.cellOf(nx, ny)] === pt) { c.x = nx; c.y = ny; break; }
     }
     c.a = this.rng.next() * TAU;
-    c.structE = c.t.structE; c.reserve = childRes;
+    const jf = this.cfg.juvenileFrac; // 새끼는 작게 태어나 먹으면서 자란다
+    c.structE = c.t.structE * jf; c.f = jf; c.f075 = Math.pow(jf, 0.75); c.reserve = childRes;
     c.species = pa.species; c.speciesB = pa.speciesB; c.birth = this.tick;
     c.id = this.lineage.add(pa.id, pb ? pb.id : -1, this.tick, pa.species);
     this.born.push(c);
@@ -354,7 +359,8 @@ export class World {
   private brood(parents: Ind[], n: number, T: number, mutSigma: number, make: (g: Float32Array) => void) {
     const cfg = this.cfg;
     let nn = n;
-    const refStruct = parents[0].t.structE;
+    const jf = cfg.juvenileFrac;
+    const refStruct = parents[0].t.structE * jf;
     while (nn > 1 && T / nn < refStruct * 1.3) nn--;
     const share = T / nn; let spent = 0;
     for (let k = 0; k < nn; k++) {
@@ -362,9 +368,10 @@ export class World {
       const g = this.tmpG; make(g); mutate(g, mutSigma, this.rng);
       if (cfg.features.neat) mutateStructure(g, mutSigma, this.rng);
       const tc = this.tmpT.decode(g, cfg);
-      if (share < tc.structE * 1.15) break;
-      const childRes = Math.min(share - tc.structE, tc.maxReserve);
-      spent += tc.structE + childRes;
+      const sJ = tc.structE * jf;
+      if (share < sJ * 1.15) break;
+      const childRes = Math.min(share - sJ, tc.maxReserve * jf);
+      spent += sJ + childRes;
       this.spawnChild(parents[0], parents[1] ?? null, g, tc, childRes);
     }
     return spent;
@@ -372,7 +379,7 @@ export class World {
 
   private birthAsex(p: Ind) {
     if (this.inds.length + this.born.length >= this.cfg.maxPop) return;
-    if (p.t.give * p.reserve < p.t.structE * 1.05) return;
+    if (p.t.give * p.reserve < p.t.structE * this.cfg.juvenileFrac * 1.05) return;
     const T = p.t.give * p.reserve;
     p.reserve -= this.brood([p], p.t.clutchMax, T, p.t.mut, (g) => g.set(p.genome));
   }
@@ -452,7 +459,7 @@ export class World {
       inp[16] = o.t.claw * 2 - 1;
     }
     const c0 = this.cellOf(ind.x, ind.y);
-    inp[10] = ind.reserve / t.maxReserve;
+    inp[10] = ind.reserve / (t.maxReserve * ind.f);
     inp[11] = (this.tempAt(c0) + 10) / 25 - 1;
     inp[12] = this.terrain[c0] * 0.5;
     inp[13] = noise ? this.rng.next() * 2 - 1 : 0;
@@ -539,6 +546,10 @@ export class World {
 
     // 3) 감염
     this.infectionPass();
+    if (this.tick % 100 === 0 && this.inds.length) { // 병원체 균주가 인구 평균 면역형을 따라 이동 (+잡음)
+      let m = 0; for (const i of this.inds) m += i.t.imm; m /= this.inds.length;
+      this.strain += 0.15 * (m - this.strain) + 0.02 * rng.gauss(); this.strain = Math.min(1, Math.max(0, this.strain));
+    }
 
     // 4) 식물/토양/사체
     this.ecologyPass();
@@ -568,6 +579,14 @@ export class World {
     if (!ind.alive) return;
     const cfg = this.cfg, t = ind.t;
     ind.age++;
+    if (ind.f < 1) { // 성장: 저장 에너지가 넉넉할 때만 구조 에너지로 전환 (에너지는 이동만 한다)
+      const dS = Math.min((t.structE * (1 - cfg.juvenileFrac)) / cfg.growTicks, t.structE - ind.structE);
+      if (ind.reserve > 0.25 * t.maxReserve * ind.f + dS) {
+        ind.reserve -= dS; ind.structE += dS;
+        ind.f = ind.structE >= t.structE - 1e-9 ? 1 : ind.structE / t.structE;
+        ind.f075 = Math.pow(ind.f, 0.75);
+      }
+    }
     // 이동
     ind.a += ind.oTurn * t.turnMax;
     const c0 = this.cellOf(ind.x, ind.y);
@@ -592,10 +611,11 @@ export class World {
     ind.x = nx; ind.y = ny;
     // 대사 (전부 열손실)
     const dT = Tloc - t.tOpt;
-    const move = cfg.cMove * t.mass * t.moveMul * v * v * cstm;
+    const basalNow = t.basal * ind.f075;
+    const move = cfg.cMove * t.mass * ind.f * t.moveMul * v * v * cstm;
     const exT = Math.abs(dT) > t.tolW ? Math.abs(dT) - t.tolW : 0; // 허용폭 안은 무료
     const therm = cfg.cTherm * exT * exT * t.m075 * (1 - 0.6 * t.insul);
-    let base = t.basal + move + t.visCost + therm + t.brainCost;
+    let base = basalNow + move + t.visCost + therm + t.brainCost;
     if (guard) base += cfg.cAct * t.m075;
     if (torpor) base *= 1 - 0.8 * t.hiber;
     if (resting) base *= 0.6;
@@ -605,7 +625,7 @@ export class World {
     ind.reserve -= paid; this.tickOut += paid; // 대사 열손실 = 시스템 유출
     if (total > 0) {
       const f = paid / total;
-      this.costs[0] += t.basal * f; this.costs[1] += move * f; this.costs[2] += t.visCost * f;
+      this.costs[0] += basalNow * f; this.costs[1] += move * f; this.costs[2] += t.visCost * f;
       this.costs[3] += therm * f; this.costs[4] += t.brainCost * f; this.costs[6] += extra * f;
     }
     if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
@@ -645,7 +665,8 @@ export class World {
 
   private bite(ind: Ind) {
     const cfg = this.cfg, t = ind.t;
-    const mx = ind.x + Math.cos(ind.a) * (t.radius + 0.1), my = ind.y + Math.sin(ind.a) * (t.radius + 0.1);
+    const rI = this.rad(ind);
+    const mx = ind.x + Math.cos(ind.a) * (rI + 0.1), my = ind.y + Math.sin(ind.a) * (rI + 0.1);
     // 입 앞에 개체가 있으면 공격
     if (cfg.features.attack) {
       let victim: Ind | null = null, bd = 1e9;
@@ -658,17 +679,17 @@ export class World {
         for (let q = this.bStart[b], e = this.bStart[b + 1]; q < e; q++) {
           const o = inds[this.bItems[q]];
           if (o === ind || !o.alive) continue;
-          const dx = o.x - mx, dy = o.y - my, d = Math.sqrt(dx * dx + dy * dy) - o.t.radius;
+          const dx = o.x - mx, dy = o.y - my, d = Math.sqrt(dx * dx + dy * dy) - this.rad(o);
           if (d < 0.15 && d < bd) { bd = d; victim = o; }
         }
       }
       if (victim) {
         const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1); // 갑옷, 웅크림이 피해를 줄인다
-        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, (t.attackPow * ind.oBite) / shield);
+        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, (t.attackPow * ind.f * ind.oBite) / shield);
         victim.reserve -= dmg;
-        victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / victim.t.maxReserve);
+        victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / (victim.t.maxReserve * victim.f));
         if (victim.t.toxin > 0.01) this.pay(ind, cfg.toxinK * victim.t.toxin * dmg, 5); // 독: 공격자 열손실
-        const room = t.maxReserve - ind.reserve;
+        const room = t.maxReserve * ind.f - ind.reserve;
         const gain = Math.min(dmg * t.eff[3], room > 0 ? room : 0);
         ind.reserve += gain;
         this.corpse[this.cellOf(victim.x, victim.y)] += dmg - gain; // 소화 못한 몫은 사체로
@@ -682,10 +703,10 @@ export class World {
     const a0 = this.plants[0][c], a1 = this.plants[1][c], a2 = this.plants[2][c], ac = this.corpse[c];
     const A = a0 + a1 + a2 + ac;
     if (A <= 1e-9) return;
-    const cap = t.biteCap * ind.oBite;
+    const cap = t.biteCap * ind.f075 * ind.oBite;
     let sc = cap >= A ? 1 : cap / A;
     let gain = (a0 * t.eff[0] + a1 * t.eff[1] + a2 * t.eff[2] + ac * t.eff[3]) * sc;
-    const room = t.maxReserve - ind.reserve;
+    const room = t.maxReserve * ind.f - ind.reserve;
     if (room <= 0) return;
     if (gain > room) { sc *= room / gain; gain = room; }
     const take = A * sc;
@@ -706,7 +727,7 @@ export class World {
         const o = inds[this.bItems[q]];
         if (o === ind || !o.alive || o.mated || o.mode !== MODE_SEX) continue;
         const dx = o.x - ind.x, dy = o.y - ind.y, d = Math.sqrt(dx * dx + dy * dy);
-        if (d > t.radius + o.t.radius + 1.5 || d >= bd) continue;
+        if (d > this.rad(ind) + this.rad(o) + 1.5 || d >= bd) continue;
         if (!this.ready(o)) continue;
         // 까다로움: 게놈 거리가 먼 짝은 거른다 (헛수고 방지 ↔ 후보 감소)
         const maxD = cfg.dmax * (1.05 - 0.75 * Math.max(t.picky, o.t.picky));
@@ -722,6 +743,11 @@ export class World {
     if (p > 0 && this.rng.next() < p) { this.cnt.matings++; this.birthSex(ind, partner); }
     else this.cnt.matingFails++;
     if (partner.reserve <= 0) this.kill(partner, partner.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED);
+  }
+
+  private suscept(o: Ind) { // 감염 취약도: 저항성 × (균주와 면역형이 가까울수록 높음)
+    const d = (this.strain - o.t.imm) / 0.3;
+    return (1 - o.t.res) * (0.25 + 0.75 * Math.exp(-d * d));
   }
 
   private infectionPass() {
@@ -741,7 +767,7 @@ export class World {
           if (o === a || !o.alive || o.inf !== 0) continue;
           const dx = o.x - a.x, dy = o.y - a.y;
           if (dx * dx + dy * dy > r2) continue;
-          if (rng.next() < cfg.infBeta * (1 - o.t.res)) o.inf = cfg.infDuration + 1;
+          if (rng.next() < cfg.infBeta * this.suscept(o)) o.inf = cfg.infDuration + 1;
         }
       }
     }
@@ -751,7 +777,9 @@ export class World {
       if (!o.alive) continue;
       if (o.inf === 0) {
         const pc = this.pathogen[this.cellOf(o.x, o.y)];
-        if (pc > 0.01 && rng.next() < Math.min(1, pc * cfg.pathogenDose) * (1 - o.t.res)) o.inf = cfg.infDuration + 1;
+        // 상시 병원체 저장소(endemic) + 역병으로 푼 병원체: 둘 다 취약도에 비례
+        const pr = (cfg.endemicRate + (pc > 0.01 ? Math.min(1, pc * cfg.pathogenDose) : 0)) * this.suscept(o);
+        if (rng.next() < pr) o.inf = cfg.infDuration + 1;
       } else if (o.inf > 0) {
         o.inf--; if (o.inf === 0) o.inf = -cfg.infImmune;
       } else o.inf++;
@@ -759,12 +787,15 @@ export class World {
   }
 
   private ecologyPass() {
-    const cfg = this.cfg, n = this.n;
+    const cfg = this.cfg, n = this.n, w = this.w, h = this.h;
     const [P0, P1, P2] = this.plants; const soil = this.soil, corpse = this.corpse;
+    if (this.prevP.length !== 3) this.prevP = [new Float64Array(n), new Float64Array(n), new Float64Array(n)];
+    const [Q0, Q1, Q2] = this.prevP; Q0.set(P0); Q1.set(P1); Q2.set(P2); // 이웃 바이오매스(씨앗 공급원)는 이전 상태 기준
     const season = cfg.features.seasons ? 1 + cfg.seasonGrowthAmp * this.seasonSin : 1;
     const nu = cfg.soilShare, pMax = cfg.pMax, sunBase = cfg.sunRate * this.sunG * season;
     const sen = cfg.senescence, dec = cfg.corpseDecay, half = cfg.soilHalf, dv = cfg.devastTicks;
     const pd = cfg.pathogenDecay, off = cfg.offProfile;
+    const seedBg = cfg.seedBg * pMax, seedK = cfg.seedK * pMax;
     const resp = this.resp;
     let inflow = 0;
     for (let c = 0; c < n; c++) {
@@ -776,7 +807,7 @@ export class World {
       if (tr === T_MOUNTAIN) continue;
       // 노화 → 토양
       const a0 = P0[c], a1 = P1[c], a2 = P2[c];
-      let l0 = a0 * sen, l1 = a1 * sen, l2 = a2 * sen;
+      const l0 = a0 * sen, l1 = a1 * sen, l2 = a2 * sen;
       let S = soil[c] + l0 + l1 + l2;
       let q0 = a0 - l0, q1 = a1 - l1, q2 = a2 - l2;
       const P = q0 + q1 + q2;
@@ -784,10 +815,17 @@ export class World {
         const x = P / pMax;
         let dvf = 1;
         if (this.devast[c] > 0) { dvf = 1 - this.devast[c] / dv; this.devast[c]--; }
-        const base = sunBase * this.sunMul[c] * (1 - x) * (0.35 + 0.65 * Math.min(1, 3 * x)) * dvf * (S / (S + half));
+        const base = sunBase * this.sunMul[c] * (1 - x) * dvf * (S / (S + half));
         const z = this.zone[c], d = this.dom[c], rz = resp[z];
-        let g0 = base * (d === 0 ? 1 : off) * rz[0], g1 = base * (d === 1 ? 1 : off) * rz[1], g2 = base * (d === 2 ? 1 : off) * rz[2];
-        if (tr === T_WATER) { g0 = 0; g1 = 0; g2 = base * (rz[2] > 0.6 ? rz[2] : 0.6); } // 수초만 자란다
+        // 씨앗: 자기 셀 + 이웃 4칸의 같은 종 바이오매스가 있어야 자란다 (뜯어먹혀 사라진 곳은 이웃에서 천천히 다시 퍼짐)
+        const cx = c % w, cy = (c / w) | 0;
+        const L = cx > 0 ? c - 1 : -1, R = cx < w - 1 ? c + 1 : -1, U = cy > 0 ? c - w : -1, D = cy < h - 1 ? c + w : -1;
+        const nb = (Q: Float64Array) => ((L >= 0 ? Q[L] : 0) + (R >= 0 ? Q[R] : 0) + (U >= 0 ? Q[U] : 0) + (D >= 0 ? Q[D] : 0)) * 0.25;
+        const f0 = Math.min(1, (Q0[c] + 0.5 * nb(Q0) + seedBg) / seedK);
+        const f1 = Math.min(1, (Q1[c] + 0.5 * nb(Q1) + seedBg) / seedK);
+        const f2 = Math.min(1, (Q2[c] + 0.5 * nb(Q2) + seedBg) / seedK);
+        let g0 = base * (d === 0 ? 1 : off) * rz[0] * f0, g1 = base * (d === 1 ? 1 : off) * rz[1] * f1, g2 = base * (d === 2 ? 1 : off) * rz[2] * f2;
+        if (tr === T_WATER) { g0 = 0; g1 = 0; g2 = base * (rz[2] > 0.6 ? rz[2] : 0.6) * f2; } // 수초만 자란다
         let g = g0 + g1 + g2;
         const need = nu * g;
         if (need > S) { const k = S / need; g0 *= k; g1 *= k; g2 *= k; g *= k; }

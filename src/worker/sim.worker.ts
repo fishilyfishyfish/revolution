@@ -38,9 +38,9 @@ function frame(force = false) {
   const ind = new Float32Array(n * 10);
   for (let i = 0; i < n; i++) {
     const a = w.inds[i], o = i * 10;
-    ind[o] = a.x; ind[o + 1] = a.y; ind[o + 2] = a.a; ind[o + 3] = a.t.radius; ind[o + 4] = a.t.hue;
+    ind[o] = a.x; ind[o + 1] = a.y; ind[o + 2] = a.a; ind[o + 3] = a.t.radius * (0.6 + 0.4 * a.f); ind[o + 4] = a.t.hue;
     ind[o + 5] = a.species; ind[o + 6] = a.speciesB; ind[o + 7] = a.inf > 0 ? 1 : 0; ind[o + 8] = a.id;
-    ind[o + 9] = a.reserve / a.t.maxReserve;
+    ind[o + 9] = a.reserve / (a.t.maxReserve * a.f);
   }
   const N = w.n; const layers = new Uint8Array(N * 5); const pm = 255 / w.cfg.pMax;
   for (let c = 0; c < N; c++) {
@@ -70,7 +70,7 @@ function stats() {
     spA: strip(w.spA), spB: strip(w.spB), events: w.events, log: w.log, hists: w.hists,
     costs: Array.from(w.cumCosts), cnt: { ...w.cnt },
     energy: { ...e, cumIn: w.cumIn, cumOut: w.cumOut },
-    env: { sun: w.sunG, meanTemp: w.meanTempG, seasonAmp: w.seasonAmpG, seasonPeriod: w.seasonPeriodG, climShift: w.climShift },
+    env: { strain: w.strain, sun: w.sunG, meanTemp: w.meanTempG, seasonAmp: w.seasonAmpG, seasonPeriod: w.seasonPeriodG, climShift: w.climShift },
   });
   sentRows = w.history.rows.length; sentSp = w.spHist.length; lastStats = performance.now();
 }
@@ -88,10 +88,10 @@ function inspect(id: number) {
   const t = ind.t; const b = w.inspectBrain(ind);
   const traits: Record<string, number> = { '몸 크기': t.size, '최대 속도': t.vmax, '시야 거리': t.vis, '시야 각도(°)': (t.ang * 180) / Math.PI,
     '식성 A': t.diet[0], '식성 B': t.diet[1], '식성 C': t.diet[2], '식성 고기': t.diet[3], '적정 기온': t.tOpt, '질병 저항': t.res,
-    '번식 임계': t.thr, '자식 에너지': t.give, '유성 성향': t.sex, '돌연변이율': t.mut, '색(hue)': t.hue, '진동수': t.osc, '수생 적응': t.aq, '수명(틱)': t.lifespan, '갑옷': t.armor, '이빨·발톱': t.claw, '독': t.toxin, '후각 반경': t.smellR, '청각 반경': t.hearR, '기온 허용폭': t.tolW, '단열': t.insul, '겨울잠': t.hiber, '한배 새끼 수': t.clutchMax, '뇌 은닉 노드': t.nodes, '뇌 활성 연결': t.conns, '짝 까다로움': t.picky,
+    '번식 임계': t.thr, '자식 에너지': t.give, '유성 성향': t.sex, '돌연변이율': t.mut, '색(hue)': t.hue, '진동수': t.osc, '수생 적응': t.aq, '수명(틱)': t.lifespan, '갑옷': t.armor, '이빨·발톱': t.claw, '독': t.toxin, '후각 반경': t.smellR, '청각 반경': t.hearR, '기온 허용폭': t.tolW, '단열': t.insul, '겨울잠': t.hiber, '한배 새끼 수': t.clutchMax, '면역형': t.imm, '성장(현재/성체)': ind.f, '뇌 은닉 노드': t.nodes, '뇌 활성 연결': t.conns, '짝 까다로움': t.picky,
     '기초대사/틱': t.basal, '뇌 유지비/틱': t.brainCost, '시야 유지비/틱': t.visCost };
   post({ t: 'inspect', data: {
-    id, alive: true, x: ind.x, y: ind.y, age: ind.age, reserve: ind.reserve, maxReserve: t.maxReserve, structE: ind.structE, inf: ind.inf,
+    id, alive: true, x: ind.x, y: ind.y, age: ind.age, reserve: ind.reserve, maxReserve: t.maxReserve * ind.f, structE: ind.structE, inf: ind.inf,
     species: ind.species, speciesB: ind.speciesB, genome: Array.from(ind.genome.slice(0, BO)), traits,
     brain: { ...b, w: Array.from(ind.genome.slice(BO, BO + NB)), mask: Array.from(ind.genome.slice(MO, MO + NM)) }, lineage: lineageOf(id), mode: ind.inf > 0 ? '감염' : '정상' } });
 }

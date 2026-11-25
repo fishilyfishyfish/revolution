@@ -32,6 +32,7 @@ export const STAT_TRAITS: StatTrait[] = [
   { key: 'hiber', name: '겨울잠', lo: 0, hi: 1, get: (t) => t.hiber },
   { key: 'clutch', name: '한배 새끼 수', lo: 1, hi: 4, get: (t) => t.clutchMax },
   { key: 'picky', name: '짝 까다로움', lo: 0, hi: 1, get: (t) => t.picky },
+  { key: 'imm', name: '면역형', lo: 0, hi: 1, get: (t) => t.imm },
   { key: 'nodes', name: '뇌 은닉 노드 수', lo: 0, hi: 8, get: (t) => t.nodes },
   { key: 'conns', name: '뇌 활성 연결 수', lo: 0, hi: 208, get: (t) => t.conns },
   { key: 'brain', name: '뇌 가중치 |w| 평균', lo: 0, hi: 3, get: (t, i) => { let s = 0; for (let k = 0; k < NB; k++) s += Math.abs(i.genome[BO + k]); return s / NB; } },

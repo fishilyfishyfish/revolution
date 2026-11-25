@@ -11,7 +11,7 @@ export interface Snapshot {
   plants: Float64Array[]; soil: Float64Array; corpse: Float64Array;
   indNum: Float64Array; indGenome: Float32Array; nInd: number;
   lineage: ReturnType<Lineage['pack']>;
-  env: { sunG: number; meanTempG: number; seasonAmpG: number; seasonPeriodG: number; climShift: number; climTarget: number; climRate: number };
+  env: { strain: number; sunG: number; meanTempG: number; seasonAmpG: number; seasonPeriodG: number; climShift: number; climTarget: number; climRate: number };
   ledger: { cumIn: number; cumOut: number; cumCosts: number[]; cnt: World['cnt'] };
   spA: any[]; nextSpA: number; spB: any[]; nextSpB: number;
   log: World['log']; pending: World['pending']; events: World['events'];
@@ -35,7 +35,7 @@ export function serialize(w: World): Snapshot {
     devast: w.devast.slice(), pathogen: w.pathogen.slice(),
     plants: w.plants.map((p) => p.slice()), soil: w.soil.slice(), corpse: w.corpse.slice(),
     indNum: num, indGenome: gen, nInd: n, lineage: w.lineage.pack(),
-    env: { sunG: w.sunG, meanTempG: w.meanTempG, seasonAmpG: w.seasonAmpG, seasonPeriodG: w.seasonPeriodG, climShift: w.climShift, climTarget: w.climTarget, climRate: w.climRate },
+    env: { strain: w.strain, sunG: w.sunG, meanTempG: w.meanTempG, seasonAmpG: w.seasonAmpG, seasonPeriodG: w.seasonPeriodG, climShift: w.climShift, climTarget: w.climTarget, climRate: w.climRate },
     ledger: { cumIn: w.cumIn, cumOut: w.cumOut, cumCosts: Array.from(w.cumCosts), cnt: { ...w.cnt } },
     spA: packSp(w.spA), nextSpA: w.nextSpA, spB: packSp(w.spB), nextSpB: w.nextSpB,
     log: structuredClone(w.log), pending: structuredClone(w.pending), events: structuredClone(w.events),
@@ -67,6 +67,7 @@ export function deserialize(s: Snapshot): World {
     i.species = s.indNum[o + 8]; i.speciesB = s.indNum[o + 9]; i.inf = s.indNum[o + 10]; i.birth = s.indNum[o + 11]; i.rec = s.indNum[o + 12]; i.hurt = s.indNum[o + 13];
     i.genome = s.indGenome.slice(k * G, (k + 1) * G);
     i.t = new Traits().decode(i.genome, w.cfg);
+    i.f = Math.min(1, i.structE / i.t.structE); i.f075 = Math.pow(i.f, 0.75);
     w.inds.push(i);
   }
   return w;

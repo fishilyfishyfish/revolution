@@ -31,7 +31,7 @@ export interface StatsMsg {
   hists: Record<string, number[]>;
   costs: number[]; cnt: Record<string, number>;
   energy: { plants: number; soil: number; corpse: number; bodies: number; total: number; cumIn: number; cumOut: number };
-  env: { sun: number; meanTemp: number; seasonAmp: number; seasonPeriod: number; climShift: number };
+  env: { strain: number; sun: number; meanTemp: number; seasonAmp: number; seasonPeriod: number; climShift: number };
 }
 export interface SnapMeta { id: number; tick: number; label: string; hasIv: boolean }
 export type FromWorker =

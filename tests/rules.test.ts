@@ -210,3 +210,34 @@ describe('전멸 시 자동 재시작 옵션', () => {
     expect(w.cfg.restartOnExtinction).toBe(false); expect(w.log.some((e) => e.iv.kind === 'global')).toBe(true);
   });
 });
+
+describe('현실화: 성장·씨앗·배경 질병', () => {
+  const mk = (seed = 3) => World.create(defaultConfig({ w: 40, h: 30, seed, initPop: 120, features: STAGES[7] }));
+  it('새끼는 작게 태어나 자라고, 성장 중에도 에너지 장부가 맞는다', () => {
+    const w = mk();
+    let sawJuv = false, sawGrown = false;
+    for (let t = 0; t < 700; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+      for (const i of w.inds) { if (i.birth > 0 && i.f < 0.6) sawJuv = true; if (i.birth > 0 && i.age > 300 && i.f === 1) sawGrown = true; }
+    }
+    expect(sawJuv).toBe(true); expect(sawGrown).toBe(true);
+  });
+  it('식물은 이웃 씨앗이 있어야 번진다: 외딴 빈 셀은 이웃이 있을 때가 없을 때보다 빨리 찬다', () => {
+    const w = World.create(defaultConfig({ w: 24, h: 24, seed: 1, initPop: 0, genTerrain: false, features: STAGES[7] }));
+    for (const p of w.plants) p.fill(0);
+    const a = 5 * 24 + 5, b = 15 * 24 + 15; // a: 이웃에 풀이 있음, b: 완전히 외딴 곳
+    for (const nb of [a - 1, a + 1, a - 24, a + 24]) w.plants[0][nb] = 25;
+    w.dom.fill(0);
+    for (let t = 0; t < 40; t++) stepSim(w);
+    expect(w.plants[0][a]).toBeGreaterThan(w.plants[0][b] * 3);
+  });
+  it('역병 없이도 상시 병원체로 감염이 생기고, 면역형은 균주와 멀수록 덜 걸린다', () => {
+    const w = mk(5); for (let t = 0; t < 600; t++) stepSim(w);
+    expect(w.inds.some((i) => i.inf !== 0)).toBe(true);
+    const s = (w as any).suscept.bind(w) as (i: any) => number;
+    const near = w.inds[0], far = w.inds[1]; near.t.res = far.t.res = 0;
+    near.t.imm = w.strain; far.t.imm = Math.abs(w.strain - 0.9) > 0.5 ? 0.9 : 0.05;
+    expect(s(near)).toBeGreaterThan(s(far));
+  });
+});
