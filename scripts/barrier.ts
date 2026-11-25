@@ -9,7 +9,7 @@ import { compatProb, genomeDistance } from '../src/sim/genome';
 const arg = (k: string, d: string) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const seed = +arg('seed', '1'), T1 = +arg('isolate', '60000'), T2 = +arg('after', '20000'), control = arg('control', '0') === '1';
 const bw = +arg('width', '16');
-const cfg = defaultConfig({ seed, features: STAGES[6], initPop: 600, genTerrain: false });
+const cfg = defaultConfig({ seed, features: STAGES[6], initPop: 600, genTerrain: false, dmax: +arg('dmax', '0.5'), dcluster: 0.6 * +arg('dmax', '0.5') });
 const w = World.create(cfg);
 const x0 = cfg.w / 2 - bw / 2, x1 = cfg.w / 2 + bw / 2;
 const log: string[] = []; const say = (s: string) => { log.push(s); console.log(s); };
