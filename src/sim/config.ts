@@ -6,6 +6,7 @@ export interface Features {
   biomes: boolean;    // 바이옴(식물 종 편향, 기온대)
   seasons: boolean;   // 계절 변동
   sexual: boolean;    // 유성생식
+  neat?: boolean;     // 뇌 구조 변이(NEAT식): 연결·노드 추가/제거 (옵션)
 }
 
 export interface Config {
@@ -20,7 +21,7 @@ export interface Config {
   // 몸
   kStruct: number; kStore: number; effMax: number; biteK: number; attackK: number; turnK: number;
   // 비용 (전부 열손실로 나가는 대사 비용)
-  cBasal: number; cMove: number; cVision: number; cTherm: number; cBrain: number; cBrainW: number;
+  cBasal: number; cMove: number; cVision: number; cTherm: number; cBrain: number; cBrainW: number; cBrainStruct: number;
   cRes: number; cRepair: number; cAct: number; cAttack: number; cAttempt: number; cSignal: number;
   // 지형
   speedMul: number[]; costMul: number[];
@@ -34,7 +35,8 @@ export interface Config {
   founders: { preset: string; count: number }[] | null;
 }
 
-export function defaultConfig(over: Partial<Config> = {}): Config {
+export type ConfigOverride = Partial<Omit<Config, 'features'>> & { features?: Partial<Features> };
+export function defaultConfig(over: ConfigOverride = {}): Config {
   const c: Config = {
     w: 128, h: 96, seed: 1, initPop: 400,
     features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true },
@@ -44,7 +46,7 @@ export function defaultConfig(over: Partial<Config> = {}): Config {
     meanTemp: 15, seasonAmp: 6, seasonPeriod: 1200, seasonGrowthAmp: 0.3,
     zoneOffset: [-6, 0, 6], sun: 1,
     kStruct: 20, kStore: 140, effMax: 0.9, biteK: 3.5, attackK: 2, turnK: 0.6,
-    cBasal: 0.07, cMove: 0.15, cVision: 0.0002, cTherm: 0.0006, cBrain: 0.015, cBrainW: 0.01,
+    cBasal: 0.07, cMove: 0.15, cVision: 0.0002, cTherm: 0.0006, cBrain: 0.015, cBrainW: 0.01, cBrainStruct: 0.03,
     cRes: 0.5, cRepair: 0.3, cAct: 0.02, cAttack: 0.5, cAttempt: 1.0, cSignal: 0.01,
     speedMul: [1, 0.5, 0.15], costMul: [1, 3, 10],
     infDuration: 150, infImmune: 100, infMetaMul: 1.5, contactR: 1.6, infBeta: 0.25,

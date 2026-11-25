@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { defaultConfig } from '../src/sim/config';
 import { World, INTERVENTION_KINDS } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
-import { G, NT, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
+import { G, NT, NM, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
 import { Rng } from '../src/sim/rng';
 
 describe('원칙 점검', () => {
@@ -73,7 +73,7 @@ describe('유전/뇌', () => {
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
     expect([NIN, NH, NOUT]).toEqual([19, 8, 7]);
-    expect(G).toBe(NT + NB);
+    expect(G).toBe(NT + NB + NM);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
     for (const v of out) expect(Math.abs(v)).toBeLessThanOrEqual(1);
@@ -157,5 +157,41 @@ describe('세부 형질: 이득과 비용', () => {
       const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
       expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
     }
+  });
+});
+
+import { mutateStructure, initMasks, MO, M_H, MAXC } from '../src/sim/genome';
+describe('단계 8: 뇌 구조 변이(NEAT식)', () => {
+  const rng = new Rng(11);
+  const active = (g: Float32Array) => { let c = 0; for (let i = 0; i < NM; i++) if (g[MO + i] >= 0.5) c++; return c; };
+  it('옵션이 꺼져 있으면 마스크는 전부 켜짐 (기존 동작)', () => {
+    const g = founderGenome(rng, founderBrain(rng)); for (let i = 0; i < NM; i++) expect(g[MO + i]).toBe(1);
+    const cfg = defaultConfig(); const t = new Traits().decode(g, cfg); expect(t.nodes).toBe(NH);
+  });
+  it('켜면 작은 뇌에서 시작하고, 구조 변이로 연결·노드 수가 변한다', () => {
+    const g = new Float32Array(G); initMasks(g, rng, true);
+    let nodes0 = 0; for (let j = 0; j < NH; j++) if (g[MO + M_H + j] > 0.5) nodes0++;
+    expect(nodes0).toBe(4); const c0 = active(g);
+    let changed = 0;
+    for (let t = 0; t < 400; t++) { const h = g.slice(); mutateStructure(h, 0.06, rng); if (active(h) !== active(g)) changed++; for (let i = 0; i < NM; i++) g[MO + i] = h[MO + i]; }
+    expect(changed).toBeGreaterThan(20); void c0;
+    let nodes = 0; for (let j = 0; j < NH; j++) if (g[MO + M_H + j] > 0.5) nodes++;
+    expect(nodes).toBeGreaterThanOrEqual(2); // 최소 노드 보장
+  });
+  it('활성 연결·노드가 많을수록 뇌 유지비↑', () => {
+    const cfg = defaultConfig({ features: { ...STAGES[7], neat: true } });
+    const small = new Float32Array(G), big = new Float32Array(G); initMasks(small, rng, true); initMasks(big, rng, false);
+    expect(new Traits().decode(big, cfg).brainCost).toBeGreaterThan(new Traits().decode(small, cfg).brainCost);
+    void MAXC;
+  });
+  it('구조 변이를 켜도 에너지 장부 보존, 재현성 유지', () => {
+    const mk = () => World.create(defaultConfig({ w: 40, h: 30, seed: 8, initPop: 100, features: { ...STAGES[7], neat: true } }));
+    const w = mk();
+    for (let t = 0; t < 500; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+    }
+    const w2 = mk(); for (let t = 0; t < 500; t++) stepSim(w2);
+    expect(w2.checksum()).toBe(w.checksum());
   });
 });

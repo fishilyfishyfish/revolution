@@ -13,7 +13,7 @@ function probe(w: World) {
   const inp = new Float64Array(NIN), hid = new Float64Array(NH), out = new Float64Array(NOUT);
   let agreeP = 0, nP = 0, agreeO = 0, nO = 0, agreeC = 0, nC = 0, spdNear = 0, nNear = 0, spdFar = 0, nFar = 0, biteNear = 0, biteFar = 0;
   for (const ind of w.inds) {
-    w.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out);
+    w.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out, !!w.cfg.features.neat);
     if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { nP++; if (out[0] * inp[0] > 0) agreeP++; }
     if (inp[4] > 0 && Math.abs(inp[3]) > 0.05) { nC++; if (out[0] * inp[3] > 0) agreeC++; }
     if (inp[6] > 0 && Math.abs(inp[5]) > 0.05) { nO++; if (out[0] * inp[5] > 0) agreeO++; }
@@ -59,7 +59,7 @@ for (let t = 1; t <= ticks; t++) {
 const rows = w.history.rows; const k = Math.max(1, Math.floor(rows.length * 0.1));
 const avg = (a: number[][], c: number) => a.reduce((s, r) => s + r[c], 0) / a.length;
 say('## 형질 평균 (초기 10% 구간 → 마지막 10% 구간, 개체 간 표준편차 대비 이동)');
-for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'aq', 'long', 'armor', 'claw', 'toxin', 'smell', 'hear', 'twid', 'insul', 'hiber', 'clutch', 'picky', 'brain']) {
+for (const name of ['size', 'vmax', 'vis', 'ang', 'd0', 'd1', 'd2', 'dm', 'tOpt', 'res', 'thr', 'give', 'sex', 'mut', 'aq', 'long', 'armor', 'claw', 'toxin', 'smell', 'hear', 'twid', 'insul', 'hiber', 'clutch', 'picky', 'nodes', 'conns', 'brain']) {
   const c = col('m_' + name), s = col('s_' + name);
   const a = avg(rows.slice(0, k), c), b = avg(rows.slice(-k), c), sd = avg(rows.slice(-k), s) || 1e-9;
   say(`${name.padEnd(6)} ${a.toFixed(3)} → ${b.toFixed(3)}  (Δ=${(b - a).toFixed(3)}, ${((b - a) / sd).toFixed(2)}σ)`);

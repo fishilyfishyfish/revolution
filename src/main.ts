@@ -77,7 +77,7 @@ function newWorld() {
   if (!founders.length) founders.push({ preset: 'herb', count: 300 });
   const waterLevel = +($('water') as HTMLSelectElement).value;
   hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
-  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel } }); client.send({ t: 'run', running: true }); sendSpeed();
+  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, features: { neat: ($('neat') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
 }
 $('reset').onclick = newWorld;
 $('save').onclick = () => client.send({ t: 'getSnap', id: 0, purpose: 'save' });

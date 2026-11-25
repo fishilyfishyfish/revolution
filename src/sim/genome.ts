@@ -13,7 +13,12 @@ export const GENE = {
 } as const;
 export const NT = 28;
 export const BO = NT;
-export const G = NT + NB;
+// 뇌 구조 마스크(NEAT식 구조 변이용): 연결·은닉 노드마다 켜짐(1)/꺼짐(0). 구조 변이를 끄면 전부 1로 고정된다.
+export const NM = NIN * NH + NH * NOUT + NH;
+export const MO = NT + NB;
+export const M_W2 = NIN * NH, M_H = M_W2 + NH * NOUT;
+export const MAXC = NIN * NH + NH * NOUT + 2 * NH;
+export const G = NT + NB + NM;
 export const TAU = Math.PI * 2;
 
 export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '사체 방향', '사체 거리', '개체 방향', '개체 거리',
@@ -31,7 +36,7 @@ export class Traits {
   tOpt = 0; res = 0; thr = 0; give = 0; sex = 0; mut = 0; hue = 0; osc = 0;
   maxReserve = 0; structE = 0; m075 = 0; basal = 0; visCost = 0; brainCost = 0;
   turnMax = 0; biteCap = 0; attackPow = 0; foodThr = 0;
-  lifespan = 0; armor = 0; claw = 0; toxin = 0; smellR = 0; hearR = 0; tolW = 0; insul = 0; hiber = 0; clutchMax = 1; picky = 0; moveMul = 1; tempLethal = 0; aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
+  nodes = NH; conns = NIN * NH + NH * NOUT; lifespan = 0; armor = 0; claw = 0; toxin = 0; smellR = 0; hearR = 0; tolW = 0; insul = 0; hiber = 0; clutchMax = 1; picky = 0; moveMul = 1; tempLethal = 0; aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
 
   decode(g: Float32Array, cfg: Config): this {
     this.size = 0.5 + 2.5 * c01(g[GENE.SIZE]);
@@ -83,7 +88,17 @@ export class Traits {
     this.basal = cfg.cBasal * m075 * (1 + cfg.cRes * this.res) * (1 + cfg.cRepair * (1 - gm)) * (1 + cfg.cLong * lg)
       * (1 + 0.5 * this.armor) * (1 + 0.3 * this.claw) * (1 + 0.4 * this.toxin) * (1 + 0.3 * tw) * (1 + 0.4 * this.insul) * (1 + 0.15 * this.hiber);
     this.visCost = cfg.cVision * 0.5 * this.vis * this.vis * this.ang + cfg.cSense * (this.smellR * this.smellR + this.hearR * this.hearR);
-    this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
+    if (cfg.features.neat) { // 구조 변이: 활성 연결·노드가 많을수록 유지비↑ (복잡한 뇌는 값어치를 해야 한다)
+      let nn = 0, nc = 0;
+      for (let j = 0; j < NH; j++) {
+        if (g[MO + M_H + j] < 0.5) continue;
+        nn++;
+        for (let i = 0; i < NIN; i++) if (g[MO + i * NH + j] >= 0.5) nc++;
+        for (let k = 0; k < NOUT; k++) if (g[MO + M_W2 + j * NOUT + k] >= 0.5) nc++;
+      }
+      this.nodes = nn; this.conns = nc;
+      this.brainCost = cfg.cBrain * 0.3 + cfg.cBrainStruct * (nc + 2 * nn) / MAXC;
+    } else this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
     this.turnMax = cfg.turnK / this.size;
     this.biteCap = cfg.biteK * m075;
     this.foodThr = Math.max(cfg.plantMin, 0.8 * this.biteCap); // 한 입 거리가 되는 먹이만 '보인다'
@@ -99,13 +114,14 @@ export function founderBrain(rng: Rng): Float32Array {
 }
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.4)
-export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
+export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false): Float32Array {
   const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1];
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.4;
   // 창시 집단은 웅크림·휴식 출력이 기본 '꺼짐' 쪽에서 시작한다 (진화로 켜질 수는 있다)
   out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2;
+  initMasks(out, rng, neat);
   return out;
 }
 
@@ -118,18 +134,30 @@ export const PRESETS: Preset[] = [
   { name: 'fish', label: '물고기', icon: '🐟', water: true, traits: { SIZE: 0.12, VMAX: 0.5, VIS: 0.5, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.8, DM: 0.14, CLUTCH: 0.6 } },
   { name: 'fishpred', label: '수중 포식자', icon: '🦈', water: true, traits: { SIZE: 0.5, VMAX: 0.75, VIS: 0.65, ANG: 0.4, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.04, DM: 0.9, CLAW: 0.6, SMELL: 0.5 } },
 ];
-export function presetGenome(name: string, rng: Rng, base: Float32Array, out = new Float32Array(G)): Float32Array {
-  founderGenome(rng, base, out);
+export function presetGenome(name: string, rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false): Float32Array {
+  founderGenome(rng, base, out, neat);
   const pr = PRESETS.find((p) => p.name === name);
   if (pr) for (const [k, v] of Object.entries(pr.traits)) out[GENE[k as keyof typeof GENE]] = c01(v! + rng.gauss() * 0.05);
   return out;
 }
 
-export function randomGenome(rng: Rng, out = new Float32Array(G)): Float32Array {
+// 마스크 초기화. 구조 변이가 꺼져 있으면 전부 켜짐. 켜져 있으면 NEAT처럼 작은 뇌(은닉 4개, 듬성듬성한 연결)에서 시작한다.
+export function initMasks(g: Float32Array, rng: Rng, neat: boolean) {
+  if (!neat) { for (let i = 0; i < NM; i++) g[MO + i] = 1; return; }
+  for (let i = 0; i < NM; i++) g[MO + i] = 0;
+  for (let j = 0; j < 4; j++) {
+    g[MO + M_H + j] = 1;
+    for (let i = 0; i < NIN; i++) if (rng.next() < 0.3) g[MO + i * NH + j] = 1;
+    for (let k = 0; k < NOUT; k++) if (rng.next() < 0.5) g[MO + M_W2 + j * NOUT + k] = 1;
+  }
+}
+
+export function randomGenome(rng: Rng, out = new Float32Array(G), neat = false): Float32Array {
   // 전멸 후 재시작용 무작위 게놈. 유지비가 큰 선택 형질(갑옷·발톱·독·감각·단열·겨울잠·허용폭)은 0 쪽으로 치우친 분포(r²)에서 뽑는다.
   const skew = new Set<number>([GENE.ARMOR, GENE.CLAW, GENE.TOXIN, GENE.SMELL, GENE.HEAR, GENE.TWID, GENE.INSUL, GENE.HIBER, GENE.SIZE, GENE.VMAX, GENE.VIS]);
   for (let i = 0; i < NT; i++) { const r = rng.next(); out[i] = skew.has(i) ? r * r : r; }
   for (let i = 0; i < NB; i++) out[BO + i] = rng.gauss() * 0.8;
+  initMasks(out, rng, neat);
   return out;
 }
 
@@ -141,6 +169,10 @@ export function crossover(out: Float32Array, a: Float32Array, b: Float32Array, r
     for (let i = 0; i < NIN; i++) out[BO + W1 + i * NH + j] = src[BO + W1 + i * NH + j];
     out[BO + B1 + j] = src[BO + B1 + j];
     for (let k = 0; k < NOUT; k++) out[BO + W2 + j * NOUT + k] = src[BO + W2 + j * NOUT + k];
+    // 마스크도 같은 블록에서 함께 물려받는다
+    for (let i = 0; i < NIN; i++) out[MO + i * NH + j] = src[MO + i * NH + j];
+    out[MO + M_H + j] = src[MO + M_H + j];
+    for (let k = 0; k < NOUT; k++) out[MO + M_W2 + j * NOUT + k] = src[MO + M_W2 + j * NOUT + k];
   }
   for (let k = 0; k < NOUT; k++) out[BO + B2 + k] = (rng.next() < 0.5 ? a : b)[BO + B2 + k];
 }
@@ -161,6 +193,41 @@ export function mutate(g: Float32Array, sigma: number, rng: Rng) {
   }
 }
 
+// 구조 변이 (NEAT식): 연결 추가/제거, 노드 추가/제거. 확률은 부모의 돌연변이율에 비례한다.
+export function mutateStructure(g: Float32Array, mut: number, rng: Rng) {
+  const sc = Math.min(3, mut / 0.02);
+  const hidOn = (j: number) => g[MO + M_H + j] >= 0.5;
+  if (rng.next() < 0.04 * sc) { // 연결 추가 (켜진 은닉 노드에 붙은 꺼진 연결 하나)
+    for (let t = 0; t < 12; t++) {
+      const j = rng.int(NH); if (!hidOn(j)) continue;
+      if (rng.next() < NIN / (NIN + NOUT)) { const i = rng.int(NIN); if (g[MO + i * NH + j] < 0.5) { g[MO + i * NH + j] = 1; g[BO + W1 + i * NH + j] = rng.gauss() * 0.8; break; } }
+      else { const k = rng.int(NOUT); if (g[MO + M_W2 + j * NOUT + k] < 0.5) { g[MO + M_W2 + j * NOUT + k] = 1; g[BO + W2 + j * NOUT + k] = rng.gauss() * 0.8; break; } }
+    }
+  }
+  if (rng.next() < 0.03 * sc) { // 연결 제거
+    for (let t = 0; t < 12; t++) {
+      if (rng.next() < NIN / (NIN + NOUT)) { const i = rng.int(NIN), j = rng.int(NH); if (g[MO + i * NH + j] >= 0.5) { g[MO + i * NH + j] = 0; break; } }
+      else { const j = rng.int(NH), k = rng.int(NOUT); if (g[MO + M_W2 + j * NOUT + k] >= 0.5) { g[MO + M_W2 + j * NOUT + k] = 0; break; } }
+    }
+  }
+  if (rng.next() < 0.008 * sc) { // 노드 추가: 꺼진 은닉 슬롯을 켜고 입력 하나·출력 하나에 연결
+    const free: number[] = []; for (let j = 0; j < NH; j++) if (!hidOn(j)) free.push(j);
+    if (free.length) {
+      const j = free[rng.int(free.length)], i = rng.int(NIN), k = rng.int(NOUT);
+      g[MO + M_H + j] = 1; g[MO + i * NH + j] = 1; g[MO + M_W2 + j * NOUT + k] = 1;
+      g[BO + W1 + i * NH + j] = rng.gauss() * 0.8; g[BO + W2 + j * NOUT + k] = rng.gauss() * 0.8; g[BO + B1 + j] = 0;
+    }
+  }
+  if (rng.next() < 0.005 * sc) { // 노드 제거 (최소 2개는 남긴다)
+    const on: number[] = []; for (let j = 0; j < NH; j++) if (hidOn(j)) on.push(j);
+    if (on.length > 2) {
+      const j = on[rng.int(on.length)]; g[MO + M_H + j] = 0;
+      for (let i = 0; i < NIN; i++) g[MO + i * NH + j] = 0;
+      for (let k = 0; k < NOUT; k++) g[MO + M_W2 + j * NOUT + k] = 0;
+    }
+  }
+}
+
 // 게놈 거리 (형질 절반 + 뇌 절반의 RMS). 색(원형) 처리 포함.
 export function genomeDistance(a: Float32Array, b: Float32Array): number {
   let st = 0;
@@ -170,15 +237,31 @@ export function genomeDistance(a: Float32Array, b: Float32Array): number {
     st += d * d;
   }
   let sw = 0;
-  for (let i = BO; i < G; i++) { const d = (a[i] - b[i]) * (1 / 3); sw += d * d; }
-  return Math.sqrt(0.5 * st / NT + 0.5 * sw / NB);
+  for (let i = BO; i < BO + NB; i++) { const d = (a[i] - b[i]) * (1 / 3); sw += d * d; }
+  let mm = 0;
+  for (let i = MO; i < G; i++) mm += Math.abs(a[i] - b[i]);
+  return Math.sqrt(0.5 * st / NT + 0.5 * (sw / NB + 0.3 * mm / NM));
 }
 
 // 교배 호환성: 거리가 클수록 성공률↓, dmax를 넘으면 0
 export function compatProb(d: number, dmax: number): number { const p = 1 - d / dmax; return p > 0 ? p : 0; }
 
 // ── 뇌 순전파 ──
-export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float64Array, out: Float64Array) {
+export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float64Array, out: Float64Array, masked = false) {
+  if (masked) { // 구조 변이: 꺼진 노드·연결은 계산하지 않는다 (연산 비용도 그만큼 줄어든다)
+    for (let j = 0; j < NH; j++) {
+      if (g[MO + M_H + j] < 0.5) { hid[j] = 0; continue; }
+      let s = g[BO + B1 + j];
+      for (let i = 0; i < NIN; i++) if (g[MO + i * NH + j] >= 0.5) s += g[BO + W1 + i * NH + j] * inp[i];
+      hid[j] = Math.tanh(s);
+    }
+    for (let k = 0; k < NOUT; k++) {
+      let s = g[BO + B2 + k];
+      for (let j = 0; j < NH; j++) if (g[MO + M_W2 + j * NOUT + k] >= 0.5) s += g[BO + W2 + j * NOUT + k] * hid[j];
+      out[k] = Math.tanh(s);
+    }
+    return;
+  }
   for (let j = 0; j < NH; j++) {
     let s = g[BO + B1 + j];
     for (let i = 0; i < NIN; i++) s += g[BO + W1 + i * NH + j] * inp[i];

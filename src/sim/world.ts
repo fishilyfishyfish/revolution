@@ -1,6 +1,6 @@
 import { Config, defaultConfig } from './config';
 import {
-  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, founderBrain, founderGenome, presetGenome, GENE, genomeDistance, mutate, randomGenome,
+  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, mutateStructure, founderBrain, founderGenome, presetGenome, GENE, genomeDistance, mutate, randomGenome,
 } from './genome';
 import { CAUSE, Lineage } from './lineage';
 import { Rng } from './rng';
@@ -171,7 +171,7 @@ export class World {
     if (!plain.length && !waterCells.length) return 0;
     for (let k = 0; k < count; k++) {
       if (founder && k > 0 && k % 20 === 0) base = founderBrain(rng); // 20마리마다 다른 원형 뇌 (한 번의 운에 전멸하지 않도록 변이 확보)
-      const g = founder ? presetGenome(preset, rng, base!) : randomGenome(rng);
+      const g = founder ? presetGenome(preset, rng, base!, undefined, !!cfg.features.neat) : randomGenome(rng, undefined, !!cfg.features.neat);
       const ind = new Ind();
       ind.genome = g; ind.t.decode(g, cfg);
       const pool = ind.t.aq > 0.5 && waterCells.length ? waterCells : plain.length ? plain : waterCells;
@@ -359,6 +359,7 @@ export class World {
     for (let k = 0; k < nn; k++) {
       if (this.inds.length + this.born.length >= cfg.maxPop) break;
       const g = this.tmpG; make(g); mutate(g, mutSigma, this.rng);
+      if (cfg.features.neat) mutateStructure(g, mutSigma, this.rng);
       const tc = this.tmpT.decode(g, cfg);
       if (share < tc.structE * 1.15) break;
       const childRes = Math.min(share - tc.structE, tc.maxReserve);
@@ -469,7 +470,7 @@ export class World {
     this.buildHash();
     const inp = new Float64Array(NIN), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     this.sense(ind, inp, false);
-    brainForward(ind.genome, inp, hid, out);
+    brainForward(ind.genome, inp, hid, out, !!this.cfg.features.neat);
     return { inp: Array.from(inp), hid: Array.from(hid), out: Array.from(out) };
   }
 
@@ -509,7 +510,7 @@ export class World {
       ind.mated = false; ind.mode = MODE_NONE;
       if (F.brain) {
         this.sense(ind, this.inp, true);
-        brainForward(ind.genome, this.inp, this.hid, this.out);
+        brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
         const o = this.out;
         ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6];
       } else { // 귀무 모형: 순수 난수 출력

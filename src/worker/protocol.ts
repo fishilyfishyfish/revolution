@@ -1,9 +1,9 @@
-import type { Config } from '../sim/config';
+import type { ConfigOverride } from '../sim/config';
 import type { Intervention } from '../sim/world';
 import type { Snapshot } from '../sim/snapshot';
 
 export type ToWorker =
-  | { t: 'init'; seed: number; stage?: number; cfg?: Partial<Config> }
+  | { t: 'init'; seed: number; stage?: number; cfg?: ConfigOverride }
   | { t: 'load'; snap: Snapshot }
   | { t: 'run'; running: boolean }
   | { t: 'speed'; mult: number; max: boolean; render: boolean }
@@ -43,7 +43,7 @@ export type FromWorker =
 export interface InspectData {
   id: number; alive: boolean; x: number; y: number; age: number; reserve: number; maxReserve: number; structE: number;
   inf: number; species: number; speciesB: number; genome: number[]; traits: Record<string, number>;
-  brain: { inp: number[]; hid: number[]; out: number[]; w: number[] };
+  brain: { inp: number[]; hid: number[]; out: number[]; w: number[]; mask: number[] };
   lineage: { id: number; birth: number; death: number; cause: number; species: number; pa: number; pb: number }[];
   mode: string;
 }
