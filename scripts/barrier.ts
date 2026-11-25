@@ -44,4 +44,4 @@ const after = report('최종');
 const verdict = before.p < 0.1 || before.fracCompat < 0.05 ? '교배 불가 → 종분화 발생' : before.p < 0.5 * 1 ? '부분 격리 (교배 확률 저하)' : '여전히 교배 가능 → 종분화 없음';
 say(`## 판정(철거 직전 기준): ${verdict}; 철거 후 좌↔우 평균교배확률 ${after.p.toFixed(3)} (직전 ${before.p.toFixed(3)})`);
 say(`## elapsed ${((Date.now() - t0) / 1000).toFixed(0)}s checksum ${w.checksum()}`);
-writeFileSync(`out/barrier_seed${seed}${control ? '_control' : ''}.txt`, log.join('\n') + '\n');
+writeFileSync(`out/barrier_seed${seed}${control ? "_control" : ""}${process.argv.includes("--tag") ? "_" + process.argv[process.argv.indexOf("--tag") + 1] : ""}.txt`, log.join('\n') + '\n');
