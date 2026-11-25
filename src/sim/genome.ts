@@ -104,6 +104,8 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.4;
+  // 창시 집단은 웅크림·휴식 출력이 기본 '꺼짐' 쪽에서 시작한다 (진화로 켜질 수는 있다)
+  out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2;
   return out;
 }
 
