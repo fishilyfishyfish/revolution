@@ -55,3 +55,13 @@ describe('에너지 회계 불변식', () => {
     }
   });
 });
+
+describe('토양 열손실(soilLoss)', () => {
+  it('켜도 매 틱 회계가 맞고, 꺼진 기본값보다 토양 에너지가 적다', () => {
+    const mk = (soilLoss: number) => World.create(defaultConfig({ w: 40, h: 30, seed: 3, initPop: 80, soilLoss, features: STAGES[7] }));
+    const a = mk(0.002), b = mk(0);
+    expect(audit(a, 300)).toBeLessThan(1e-9);
+    audit(b, 300);
+    expect(a.totalEnergy().soil).toBeLessThan(b.totalEnergy().soil);
+  });
+});

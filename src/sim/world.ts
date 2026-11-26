@@ -825,7 +825,8 @@ export class World {
     const pd = cfg.pathogenDecay, off = cfg.offProfile;
     const seedBg = cfg.seedBg * pMax, seedK = cfg.seedK * pMax;
     const resp = this.resp;
-    let inflow = 0;
+    const sl = cfg.soilLoss;
+    let inflow = 0, soilOut = 0;
     for (let c = 0; c < n; c++) {
       // 사체 분해 → 토양
       const cp = corpse[c];
@@ -860,9 +861,10 @@ export class World {
         q0 += g0; q1 += g1; q2 += g2;
         S -= nu * g; inflow += (1 - nu) * g;
       } else if (this.devast[c] > 0) this.devast[c]--;
+      if (sl > 0) { const lost = S * sl; S -= lost; soilOut += lost; }
       P0[c] = q0; P1[c] = q1; P2[c] = q2; soil[c] = S;
     }
-    this.tickIn += inflow;
+    this.tickIn += inflow; this.tickOut += soilOut;
   }
 
   // ───────────── 유틸 ─────────────
