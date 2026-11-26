@@ -694,7 +694,11 @@ export class World {
         // 갑옷·웅크림·몸집 차이(자기보다 큰 상대는 물기 어렵다)가 피해를 줄인다
         const refugeMul = cfg.refuge > 0 ? Math.max(1, Math.pow((victim.t.mass * victim.f) / (t.mass * ind.f), cfg.refuge)) : 1;
         const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1) * refugeMul;
-        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, (t.attackPow * ind.f * ind.oBite) / shield);
+        // atkRatio>0: 한 번의 공격 피해가 상대 몸집에 비례한다. 자기보다 큰 상대는 천천히, 작은 상대는 몇 번 만에 제압한다.
+        const raw = cfg.atkRatio > 0
+          ? Math.min(1, cfg.atkRatio * Math.pow((t.mass * ind.f * (1 + 1.5 * t.claw)) / (victim.t.mass * victim.f), 0.75)) * victim.t.maxReserve * victim.f * ind.oBite
+          : t.attackPow * ind.f * ind.oBite;
+        const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, raw / shield);
         victim.reserve -= dmg;
         victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / (victim.t.maxReserve * victim.f));
         if (victim.t.toxin > 0.01) this.pay(ind, cfg.toxinK * victim.t.toxin * dmg, 5); // 독: 공격자 열손실

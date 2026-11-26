@@ -32,7 +32,7 @@ export interface Config {
   // 종
   dmax: number; dcluster: number; speciesInterval: number; statInterval: number;
   maxPop: number; devastTicks: number; matureAge: number; genTerrain: boolean; waterLevel: number; restartOnExtinction: boolean;
-  refuge: number; lifeSizeExp: number; initReserve: number; initPlant: number; founderHome: boolean; dietCurve: number; cGut: number; memLeak: number; juvenileFrac: number; growTicks: number; endemicRate: number; seedK: number; seedBg: number; cSense: number; toxinK: number; cLong: number; ageHazard: number; tempTol: number; tempHazard: number; landHazard: number; waterHazard: number;
+  refuge: number; lifeSizeExp: number; initReserve: number; initPlant: number; founderHome: boolean; atkRatio: number; dietCurve: number; cGut: number; memLeak: number; juvenileFrac: number; growTicks: number; endemicRate: number; seedK: number; seedBg: number; cSense: number; toxinK: number; cLong: number; ageHazard: number; tempTol: number; tempHazard: number; landHazard: number; waterHazard: number;
   founders: { preset: string; count: number }[] | null;
 }
 
@@ -54,7 +54,7 @@ export function defaultConfig(over: ConfigOverride = {}): Config {
     pathogenDecay: 0.97, pathogenDose: 0.2,
     dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
     maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true, waterLevel: 0.2, restartOnExtinction: true, founders: null,
-    refuge: 0, lifeSizeExp: 0, initReserve: 1.0, initPlant: 1.0, founderHome: false, dietCurve: 1.0, cGut: 0.3, memLeak: 0.2, juvenileFrac: 0.5, growTicks: 100, endemicRate: 0.0001, seedK: 0.12, seedBg: 0.01, cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.005, waterHazard: 0.005,
+    refuge: 0, lifeSizeExp: 0, initReserve: 1.0, initPlant: 1.0, founderHome: false, atkRatio: 0, dietCurve: 1.0, cGut: 0.3, memLeak: 0.2, juvenileFrac: 0.5, growTicks: 100, endemicRate: 0.0001, seedK: 0.12, seedBg: 0.01, cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.005, waterHazard: 0.005,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };
 }
