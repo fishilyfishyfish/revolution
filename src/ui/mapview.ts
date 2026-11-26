@@ -53,14 +53,23 @@ export class MapView {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.off, 0, 0, cw, ch);
     if (o.showInd) {
-      const a = f.ind; const n = a.length / 10;
+      const a = f.ind; const n = a.length / 11;
       for (let i = 0; i < n; i++) {
-        const k = i * 10, x = a[k] * sc, y = a[k + 1] * sc, ang = a[k + 2], rad = Math.max(1.6, a[k + 3] * sc * 0.9);
+        const k = i * 11, x = a[k] * sc, y = a[k + 1] * sc, ang = a[k + 2], rad = Math.max(1.6, a[k + 3] * sc * 0.9);
         const sid = o.ind === 'speciesA' ? a[k + 5] : o.ind === 'speciesB' ? a[k + 6] : -2;
         ctx.globalAlpha = o.hl !== undefined && o.hl >= 0 && sid !== o.hl ? 0.18 : 1; // 범례에서 고른 종만 강조
         ctx.fillStyle = o.ind === 'hue' ? hsl(a[k + 4], 80, 55) : o.ind === 'speciesA' ? speciesColor(a[k + 5]) : o.ind === 'speciesB' ? speciesColor(a[k + 6])
           : `hsl(${Math.round(a[k + 9] * 120)},80%,50%)`;
-        ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.2832); ctx.fill();
+        const cls = a[k + 10] % 10, aqua = a[k + 10] >= 10;
+        ctx.beginPath();
+        if (cls === 2) { // 육식: 삼각형 (진행 방향이 뾰족한 쪽)
+          const r2 = rad * 1.5; ctx.moveTo(x + Math.cos(ang) * r2, y + Math.sin(ang) * r2);
+          ctx.lineTo(x + Math.cos(ang + 2.5) * r2, y + Math.sin(ang + 2.5) * r2); ctx.lineTo(x + Math.cos(ang - 2.5) * r2, y + Math.sin(ang - 2.5) * r2); ctx.closePath();
+        } else if (cls === 1) { // 잡식: 마름모
+          const r2 = rad * 1.35; ctx.moveTo(x + r2, y); ctx.lineTo(x, y + r2); ctx.lineTo(x - r2, y); ctx.lineTo(x, y - r2); ctx.closePath();
+        } else ctx.arc(x, y, rad, 0, 6.2832); // 초식: 원
+        ctx.fill();
+        if (aqua) { ctx.strokeStyle = '#7fd4ff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(x, y, rad * 1.7 + 1, 0, 6.2832); ctx.stroke(); } // 수생: 파란 테두리
         ctx.strokeStyle = a[k + 7] ? '#d0f' : 'rgba(0,0,0,.6)'; ctx.lineWidth = a[k + 7] ? 1.6 : 1;
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * rad * 1.7, y + Math.sin(ang) * rad * 1.7); ctx.stroke();
         if (a[k + 8] === o.selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, rad + 4, 0, 6.2832); ctx.stroke(); }
@@ -80,9 +89,9 @@ export class MapView {
   }
   pick(x: number, y: number): number {
     const f = this.frame; if (!f) return -1; const a = f.ind; let best = -1, bd = 4;
-    for (let i = 0; i < a.length / 10; i++) {
-      const dx = a[i * 10] - x, dy = a[i * 10 + 1] - y, d = Math.sqrt(dx * dx + dy * dy) - a[i * 10 + 3];
-      if (d < bd) { bd = d; best = a[i * 10 + 8]; }
+    for (let i = 0; i < a.length / 11; i++) {
+      const dx = a[i * 11] - x, dy = a[i * 11 + 1] - y, d = Math.sqrt(dx * dx + dy * dy) - a[i * 11 + 3];
+      if (d < bd) { bd = d; best = a[i * 11 + 8]; }
     }
     return best;
   }

@@ -70,12 +70,12 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
 #brushrow { display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); }
 #brushrow input { width:80px; border:0; background:none; }
 #hud { position:absolute; right:8px; top:8px; z-index:5; padding:5px 10px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); font-size:12px; font-variant-numeric:tabular-nums; pointer-events:none; }
-#legend { position:absolute; right:8px; bottom:8px; z-index:5; max-width:300px; max-height:46%; overflow:auto; padding:6px; border-radius:10px; background:color-mix(in srgb, var(--panel) 78%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); font-size:12px; }
+#legend { display:flex; flex-wrap:wrap; gap:4px 6px; align-items:stretch; max-height:96px; overflow:auto; padding:4px; border-radius:8px; background:var(--panel); border:1px solid var(--line); font-size:12px; }
 #legend[hidden] { display:none; }
-#legend .lt { color:var(--muted); font-size:11px; padding:0 4px 4px; }
-#legend .lr { display:flex; align-items:center; gap:6px; padding:3px 4px; border-radius:6px; cursor:pointer; line-height:1.3; }
-#legend .lr:hover { background:var(--panel2); } #legend .lr.on { outline:2px solid var(--accent); }
-#legend .lc { flex:0 0 12px; height:12px; border-radius:50%; border:1px solid rgba(0,0,0,.4); }
+#legend .lt { flex:1 0 100%; color:var(--muted); font-size:11px; padding:0 4px; }
+#legend .lr { display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:8px; cursor:pointer; line-height:1.25; background:var(--panel2); border:1px solid transparent; }
+#legend .lr:hover { border-color:var(--muted); } #legend .lr.on { border-color:var(--accent); outline:1px solid var(--accent); }
+#legend .lc { flex:0 0 auto; font-size:17px; line-height:1; } #legend .lc.aq { text-shadow:0 0 0 #7fd4ff; border:1.5px solid #7fd4ff; border-radius:50%; padding:1px 3px; }
 #hint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); z-index:5; padding:4px 12px; border-radius:14px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; pointer-events:none; white-space:nowrap; }
 #toasts { position:absolute; left:50%; top:10px; transform:translateX(-50%); z-index:30; display:flex; flex-direction:column; gap:6px; align-items:center; pointer-events:none; }
 .toast { padding:6px 14px; border-radius:16px; background:rgba(20,25,32,.88); color:#fff; font-size:12.5px; box-shadow:0 4px 14px rgba(0,0,0,.4); animation:tin .2s ease-out; transition:opacity .4s; }
@@ -90,7 +90,7 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
   #brushrow { align-self:flex-start; } #hint { bottom:auto; top:6px; font-size:11px; } #hud { top:30px; right:6px; font-size:11px; }
   #mapwrap { flex:0 0 auto; position:relative; } #map { height:auto; width:100%; }
   #hint, #hud, #toasts { position:absolute; }
-  #legend { position:static; max-width:none; max-height:30dvh; margin-top:6px; }
+  #legend { max-height:26dvh; }
 }
 
 #menulist { display:none; }
@@ -177,11 +177,11 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
       <div id="brushrow" title="브러시 반경"><span>⭕</span><input id="brush" type="range" min="1" max="20" value="4" /><span id="brushv">4</span></div>
     </div>
     <div id="hud"></div>
-    <div id="legend" hidden></div>
     <div id="hint">개체를 클릭하면 정보가 보여요</div>
     <div id="toasts"></div>
     <div id="intro"><b>처음이라면</b><br>① 왼쪽 도구로 지도를 칠하거나 ☄️🦠를 눌러보세요 (개체는 건드릴 수 없어요)<br>② 🔍로 개체를 클릭하면 뇌·계보를 볼 수 있어요<br>③ 📊 분석에서 그래프·종·계통수를 보세요<br>④ 개입하면 직전 상태가 저장돼서 🌍 환경 → 분기 비교로 "안 한 세계"와 나란히 볼 수 있어요<br><button id="introClose">알겠어요</button></div>
     </div>
+    <div id="legend" hidden></div>
     <nav id="menulist"><button data-panel="tools"><span>🌍 환경</span><b>›</b></button><button data-panel="viewpanel"><span>👁 표시</span><b>›</b></button><button data-panel="side"><span>📊 분석</span><b>›</b></button><button data-panel="filepanel"><span>💾 파일 · 새 월드 · 생물종</span><b>›</b></button></nav>
     <div id="branch" class="panel"><button class="closebtn">✕ 닫기</button>
       <div class="row"><b>분기 비교</b><span class="note" id="branchinfo"></span><span style="flex:1"></span><button id="branchClose">닫기</button></div>

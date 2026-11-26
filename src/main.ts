@@ -212,13 +212,17 @@ $('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').c
 
 // ── 지도 범례: 색 → 종 (특징 요약, 눌러서 강조) ──
 let hlSpecies = -1;
-function describeSp(r: SpInfo): string {
-  const names = ['식물A', '식물B', '식물C', '육식'];
-  let mi = 0; for (let k = 1; k < 4; k++) if (r.diet[k] > r.diet[mi]) mi = k;
-  const food = r.diet[mi] < 0.45 ? '잡식' : mi === 3 ? '육식' : `${names[mi]} 전문`;
-  const home = r.aq > 0.6 ? '수생' : r.aq > 0.3 ? '반수생' : '육상';
+function describeSp(r: SpInfo): { icon: string; shape: string; text: string; aqua: boolean } {
+  const names = ['식물A', '식물B', '식물C'];
+  let mi = 0; for (let k = 1; k < 3; k++) if (r.diet[k] > r.diet[mi]) mi = k;
+  const d3 = r.diet[3];
+  const cls = d3 > 0.5 ? 2 : d3 > 0.2 || r.diet[mi] < 0.45 ? 1 : 0;
+  const aqua = r.aq > 0.6;
+  const food = cls === 2 ? '육식' : cls === 1 ? '잡식' : `초식(${names[mi]})`;
+  const icon = cls === 2 ? (aqua ? '🦈' : '🐺') : cls === 1 ? (aqua ? '🐠' : '🐗') : aqua ? '🐟' : '🦌';
+  const home = aqua ? '수중' : r.aq > 0.3 ? '반수생' : '육상';
   const body = r.size < 0.9 ? '소형' : r.size < 1.8 ? '중형' : '대형';
-  return `${food} · ${home} · ${body}`;
+  return { icon, shape: cls === 2 ? '▲' : cls === 1 ? '◆' : '●', text: `${icon} ${food} · ${home} · ${body}`, aqua };
 }
 function renderLegend() {
   const el = $('legend'); const mode = ($('vind') as HTMLSelectElement).value;
@@ -228,8 +232,8 @@ function renderLegend() {
   const rows = mode === 'speciesA' ? st.spInfo.A : st.spInfo.B;
   if (hlSpecies >= 0 && !rows.some((r) => r.id === hlSpecies)) hlSpecies = -1;
   el.hidden = false;
-  el.innerHTML = `<div class="lt">${mode === 'speciesA' ? '종 (게놈 거리 클러스터)' : '종 (교배 가능 집단)'} · 눌러서 강조</div>` + (rows.length ? rows.map((r) =>
-    `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc" style="background:${speciesColor(r.id)}"></span><span><b>#${r.id}</b> ${r.count}마리<br><span style="color:var(--muted)">${describeSp(r)}</span></span></div>`).join('') : '<div class="lt">표시할 종 없음</div>');
+  el.innerHTML = `<div class="lt">${mode === 'speciesA' ? '종 (게놈 거리 클러스터)' : '종 (교배 가능 집단)'} · 눌러서 강조 · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>` + (rows.length ? rows.map((r) =>
+    { const d = describeSp(r); return `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리</span></span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>');
   el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; hlSpecies = hlSpecies === id ? -1 : id; renderLegend(); dirty = true; });
 }
 function updateHud() {

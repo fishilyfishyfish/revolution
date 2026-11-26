@@ -35,12 +35,13 @@ const snapList = (): SnapMeta[] => snaps.map((s) => ({ id: s.id, tick: s.tick, l
 function frame(force = false) {
   const w = world!; const now = performance.now();
   const n = w.inds.length;
-  const ind = new Float32Array(n * 10);
+  const ind = new Float32Array(n * 11);
   for (let i = 0; i < n; i++) {
-    const a = w.inds[i], o = i * 10;
+    const a = w.inds[i], o = i * 11;
     ind[o] = a.x; ind[o + 1] = a.y; ind[o + 2] = a.a; ind[o + 3] = a.t.radius * (0.6 + 0.4 * a.f); ind[o + 4] = a.t.hue;
     ind[o + 5] = a.species; ind[o + 6] = a.speciesB; ind[o + 7] = a.inf > 0 ? 1 : 0; ind[o + 8] = a.id;
     ind[o + 9] = a.reserve / (a.t.maxReserve * a.f);
+    { const d3 = a.t.diet[3]; ind[o + 10] = (d3 > 0.5 ? 2 : d3 > 0.2 || Math.max(a.t.diet[0], a.t.diet[1], a.t.diet[2]) < 0.45 ? 1 : 0) + (a.t.aq > 0.6 ? 10 : 0); } // 먹이 유형(0초식 1잡식 2육식) + 수생(+10)
   }
   const N = w.n; const layers = new Uint8Array(N * 5); const pm = 255 / w.cfg.pMax;
   for (let c = 0; c < N; c++) {

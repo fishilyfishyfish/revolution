@@ -17,7 +17,7 @@ export type ToWorker =
 export interface FrameMsg {
   t: 'frame'; tick: number; tps: number; pop: number; running: boolean;
   w: number; h: number; pMax: number;
-  ind: Float32Array; // 개체당 10값: x,y,a,radius,hue,speciesA,speciesB,inf,id,energyFrac
+  ind: Float32Array; // 개체당 11값: x,y,a,radius,hue,speciesA,speciesB,inf,id,energyFrac,유형(0초식/1잡식/2육식, +10 수생)
   layers: Uint8Array; // 셀당 5값: 식물A,B,C, 사체, 병원체
   maps?: { terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; sun: Float32Array; devast: Uint16Array };
 }
