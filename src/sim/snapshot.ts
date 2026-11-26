@@ -10,7 +10,7 @@ export interface Snapshot {
   cfg: Config; tick: number; rng: number[];
   terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; sunMul: Float32Array; devast: Uint16Array; pathogen: Float32Array;
   plants: Float64Array[]; soil: Float64Array; corpse: Float64Array;
-  indNum: Float64Array; indGenome: Float32Array; nInd: number;
+  indNum: Float64Array; indGenome: Float32Array; indMem?: Float32Array; nInd: number;
   lineage: ReturnType<Lineage['pack']>;
   env: { strain: number; sunG: number; meanTempG: number; seasonAmpG: number; seasonPeriodG: number; climShift: number; climTarget: number; climRate: number };
   ledger: { cumIn: number; cumOut: number; cumCosts: number[]; cnt: World['cnt'] };
@@ -22,12 +22,12 @@ export interface Snapshot {
 const NF = 14;
 export function serialize(w: World): Snapshot {
   const n = w.inds.length;
-  const num = new Float64Array(n * NF), gen = new Float32Array(n * G);
+  const num = new Float64Array(n * NF), gen = new Float32Array(n * G), mem = new Float32Array(n * NH);
   w.inds.forEach((i, k) => {
     const o = k * NF;
     num[o] = i.id; num[o + 1] = i.x; num[o + 2] = i.y; num[o + 3] = i.a; num[o + 4] = i.v; num[o + 5] = i.reserve;
     num[o + 6] = i.structE; num[o + 7] = i.age; num[o + 8] = i.species; num[o + 9] = i.speciesB; num[o + 10] = i.inf; num[o + 11] = i.birth; num[o + 12] = i.rec; num[o + 13] = i.hurt;
-    gen.set(i.genome, k * G);
+    gen.set(i.genome, k * G); mem.set(i.mem, k * NH);
   });
   const packSp = (a: SpeciesRec[]) => a.map((s) => ({ ...s, centroid: s.centroid ? s.centroid.slice() : null }));
   return {
@@ -35,7 +35,7 @@ export function serialize(w: World): Snapshot {
     terrain: w.terrain.slice(), dom: w.dom.slice(), zone: w.zone.slice(), sunMul: w.sunMul.slice(),
     devast: w.devast.slice(), pathogen: w.pathogen.slice(),
     plants: w.plants.map((p) => p.slice()), soil: w.soil.slice(), corpse: w.corpse.slice(),
-    indNum: num, indGenome: gen, nInd: n, lineage: w.lineage.pack(),
+    indNum: num, indGenome: gen, indMem: mem, nInd: n, lineage: w.lineage.pack(),
     env: { strain: w.strain, sunG: w.sunG, meanTempG: w.meanTempG, seasonAmpG: w.seasonAmpG, seasonPeriodG: w.seasonPeriodG, climShift: w.climShift, climTarget: w.climTarget, climRate: w.climRate },
     ledger: { cumIn: w.cumIn, cumOut: w.cumOut, cumCosts: Array.from(w.cumCosts), cnt: { ...w.cnt } },
     spA: packSp(w.spA), nextSpA: w.nextSpA, spB: packSp(w.spB), nextSpB: w.nextSpB,
@@ -84,8 +84,9 @@ export function deserialize(s: Snapshot): World {
     i.reserve = s.indNum[o + 5]; i.structE = s.indNum[o + 6]; i.age = s.indNum[o + 7];
     i.species = s.indNum[o + 8]; i.speciesB = s.indNum[o + 9]; i.inf = s.indNum[o + 10]; i.birth = s.indNum[o + 11]; i.rec = s.indNum[o + 12]; i.hurt = s.indNum[o + 13];
     i.genome = s.indGenome.slice(k * G, (k + 1) * G);
+    if (s.indMem && s.indMem.length === s.nInd * NH) i.mem.set(s.indMem.subarray(k * NH, (k + 1) * NH));
     i.t = new Traits().decode(i.genome, w.cfg);
-    i.f = Math.min(1, i.structE / i.t.structE); i.f075 = Math.pow(i.f, 0.75);
+    i.f = i.structE >= i.t.structE - 1e-9 ? 1 : i.structE / i.t.structE; i.f075 = Math.pow(i.f, 0.75); // 실행 중의 성장 규칙과 똑같이 정리해야 이어 돌린 결과가 같다
     w.inds.push(i);
   }
   return w;

@@ -2,7 +2,8 @@ import { Config } from './config';
 import { Rng } from './rng';
 
 // ── 뇌 구조 (고정) ──
-export const NIN = 21, NH = 8, NOUT = 7;
+export const NIN_BASE = 21; // 감각 입력 수
+export const NIN = NIN_BASE + 8, NH = 8, NOUT = 7; // + 직전 틱 은닉 노드 값(기억) 8개
 export const W1 = 0, B1 = NIN * NH, W2 = B1 + NH, B2 = W2 + NH * NOUT, NB = B2 + NOUT; // 173
 
 // ── 게놈 레이아웃: [형질 16개][뇌 가중치 173개] ──
@@ -22,7 +23,7 @@ export const G = NT + NB + NM;
 export const TAU = Math.PI * 2;
 
 export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '사체 방향', '사체 거리', '개체 방향', '개체 거리',
-  '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자', '최근 피해', '개체 발톱', '기온 편차', '앞쪽 지형', '개체 속도', '개체 접근'];
+  '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자', '최근 피해', '개체 발톱', '기온 편차', '앞쪽 지형', '개체 속도', '개체 접근', '기억 1', '기억 2', '기억 3', '기억 4', '기억 5', '기억 6', '기억 7', '기억 8'];
 export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호', '웅크림(방어)', '휴식'];
 export const TRAIT_NAMES = ['몸 크기', '최대 속도', '시야 거리', '시야 각도', '식물A 소화', '식물B 소화', '식물C 소화',
   '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응', '수명', '피부/갑옷', '이빨·발톱', '독', '후각', '청각', '기온 허용폭', '단열', '겨울잠', '한배 새끼 수', '짝 까다로움', '면역형'];
@@ -118,7 +119,7 @@ export function founderBrain(rng: Rng): Float32Array {
 }
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.4)
-export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false): Float32Array {
+export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false, memory = false): Float32Array {
   const mid = FOUNDER_MID;
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
@@ -127,6 +128,7 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
   // 창시 집단은 웅크림·휴식 출력이 기본 '꺼짐' 쪽에서 시작한다 (진화로 켜질 수는 있다)
   out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2;
   initMasks(out, rng, neat);
+  if (!memory) zeroMemoryWeights(out); // 기억 옵션이 꺼져 있으면 기억 입력의 가중치는 0에서 시작
   return out;
 }
 
@@ -139,14 +141,16 @@ export const PRESETS: Preset[] = [
   { name: 'fish', label: '물고기', icon: '🐟', water: true, traits: { SIZE: 0.12, VMAX: 0.5, VIS: 0.5, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.8, DM: 0.14, CLUTCH: 0.6 } },
   { name: 'fishpred', label: '수중 포식자', icon: '🦈', water: true, traits: { SIZE: 0.5, VMAX: 0.75, VIS: 0.65, ANG: 0.4, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.04, DM: 0.9, CLAW: 0.6, SMELL: 0.5 } },
 ];
-export function presetGenome(name: string, rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false): Float32Array {
-  founderGenome(rng, base, out, neat);
+export function presetGenome(name: string, rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false, memory = false): Float32Array {
+  founderGenome(rng, base, out, neat, memory);
   const pr = PRESETS.find((p) => p.name === name);
   if (pr) for (const [k, v] of Object.entries(pr.traits)) out[GENE[k as keyof typeof GENE]] = c01(v! + rng.gauss() * 0.05);
   return out;
 }
 
 // 마스크 초기화. 구조 변이가 꺼져 있으면 전부 켜짐. 켜져 있으면 NEAT처럼 작은 뇌(은닉 4개, 듬성듬성한 연결)에서 시작한다.
+function zeroMemoryWeights(g: Float32Array) { for (let i = NIN_BASE; i < NIN; i++) for (let j = 0; j < NH; j++) g[BO + W1 + i * NH + j] = 0; }
+
 export function initMasks(g: Float32Array, rng: Rng, neat: boolean) {
   if (!neat) { for (let i = 0; i < NM; i++) g[MO + i] = 1; return; }
   for (let i = 0; i < NM; i++) g[MO + i] = 0;
@@ -157,12 +161,13 @@ export function initMasks(g: Float32Array, rng: Rng, neat: boolean) {
   }
 }
 
-export function randomGenome(rng: Rng, out = new Float32Array(G), neat = false): Float32Array {
+export function randomGenome(rng: Rng, out = new Float32Array(G), neat = false, memory = false): Float32Array {
   // 전멸 후 재시작용 무작위 게놈. 유지비가 큰 선택 형질(갑옷·발톱·독·감각·단열·겨울잠·허용폭)은 0 쪽으로 치우친 분포(r²)에서 뽑는다.
   const skew = new Set<number>([GENE.ARMOR, GENE.CLAW, GENE.TOXIN, GENE.SMELL, GENE.HEAR, GENE.TWID, GENE.INSUL, GENE.HIBER, GENE.SIZE, GENE.VMAX, GENE.VIS]);
   for (let i = 0; i < NT; i++) { const r = rng.next(); out[i] = skew.has(i) ? r * r : r; }
   for (let i = 0; i < NB; i++) out[BO + i] = rng.gauss() * 0.8;
   initMasks(out, rng, neat);
+  if (!memory) zeroMemoryWeights(out);
   return out;
 }
 

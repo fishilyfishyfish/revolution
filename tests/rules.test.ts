@@ -3,8 +3,9 @@ import { readFileSync } from 'node:fs';
 import { defaultConfig } from '../src/sim/config';
 import { World, INTERVENTION_KINDS } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
-import { G, NT, NM, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
+import { BO, G, NT, NM, GENE, NIN, NH, NOUT, Traits, compatProb, genomeDistance, founderGenome, founderBrain, mutate, crossover, brainForward, NB } from '../src/sim/genome';
 import { Rng } from '../src/sim/rng';
+import { serialize, deserialize, snapshotFromJSON, snapshotToJSON } from '../src/sim/snapshot';
 
 describe('원칙 점검', () => {
   it('개입 종류는 환경에 대한 것뿐 (개체 편집/소환/제거 없음)', () => {
@@ -72,7 +73,7 @@ describe('유전/뇌', () => {
     expect(genomeDistance(a, d)).toBeGreaterThan(0);
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
-    expect([NIN, NH, NOUT]).toEqual([21, 8, 7]);
+    expect([NIN, NH, NOUT]).toEqual([29, 8, 7]);
     expect(G).toBe(NT + NB + NM);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
@@ -277,5 +278,30 @@ describe('조상 구성(계보 역추적)', () => {
     const r = ancestryOf(w.lineage, w.inds.map((i) => i.id));
     expect(r.nAlive).toBe(w.inds.length);
     expect(r.roots.reduce((s, x) => s + x.share, 0)).toBeCloseTo(1, 6);
+  });
+});
+
+describe('되먹임 기억 옵션', () => {
+  const mk = (memory: boolean, seed = 4) => World.create(defaultConfig({ w: 40, h: 30, seed, initPop: 100, features: { ...STAGES[7], memory } }));
+  it('꺼져 있으면 기억이 0으로 유지되고, 켜면 은닉 값이 기억된다', () => {
+    const off = mk(false), on = mk(true);
+    for (let t = 0; t < 30; t++) { stepSim(off); stepSim(on); }
+    expect(off.inds.every((i) => i.mem.every((v) => v === 0))).toBe(true);
+    expect(on.inds.some((i) => i.mem.some((v) => Math.abs(v) > 0.01))).toBe(true);
+  });
+  it('기억 입력의 가중치: 옵션이 꺼진 창시 집단은 0, 켜진 집단은 0이 아니다', () => {
+    const rng = new Rng(2), base = founderBrain(rng);
+    const w = (mem: boolean) => { const g = founderGenome(rng, base, undefined, false, mem); let s = 0; for (let i = 21; i < NIN; i++) for (let j = 0; j < NH; j++) s += Math.abs(g[BO + i * NH + j]); return s; };
+    expect(w(false)).toBe(0); expect(w(true)).toBeGreaterThan(0);
+  });
+  it('기억을 켜도 장부가 맞고, 스냅샷에서 이어 돌려도 같다 (기억 포함)', () => {
+    const a = mk(true, 6);
+    for (let t = 0; t < 200; t++) {
+      const b = a.totalEnergy().total; stepSim(a); const e = a.totalEnergy().total;
+      expect(Math.abs(e - b - (a.tickIn - a.tickOut)) / Math.max(1, e)).toBeLessThan(1e-9);
+    }
+    const s = serialize(a); const c = deserialize(snapshotFromJSON(snapshotToJSON(s)));
+    for (let t = 0; t < 150; t++) { stepSim(a); stepSim(c); }
+    expect(c.checksum()).toBe(a.checksum());
   });
 });

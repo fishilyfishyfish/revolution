@@ -18,6 +18,7 @@ export const OLD: OldLayout[] = [
   mk(28, 19, 7, false, '형질 28 · 뇌 19-8-7'),
   mk(28, 19, 7, true, '형질 28 · 뇌 19-8-7 + 구조 마스크'),
   mk(29, 19, 7, true, '형질 29 · 뇌 19-8-7 + 구조 마스크'),
+  mk(29, 21, 7, true, '형질 29 · 뇌 21-8-7 + 구조 마스크'),
 ];
 
 // 옛 게놈 → 현재 구조. 같은 자리의 형질·뇌 가중치는 그대로 옮기고, 새로 생긴 것은 중립값으로 채운다.
@@ -46,7 +47,7 @@ export interface Prepared { snap: Snapshot | null; note: string; error: string |
 export function prepareSnapshot(raw: any): Prepared {
   const err0 = validateSnapshot(raw);
   if (!err0) return { snap: raw as Snapshot, note: '', error: null };
-  if (!raw || typeof raw !== 'object' || raw.version !== 1 || !raw.cfg || !raw.indGenome || !raw.lineage || raw.layout) return { snap: null, note: '', error: err0 };
+  if (!raw || typeof raw !== 'object' || raw.version !== 1 || !raw.cfg || !raw.indGenome || !raw.lineage) return { snap: null, note: '', error: err0 };
   const nInd: number = raw.nInd;
   const oldG = nInd > 0 ? raw.indGenome.length / nInd : 0;
   const L = OLD.find((x) => x.G === oldG);

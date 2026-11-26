@@ -1,6 +1,6 @@
 import { Config, defaultConfig } from './config';
 import {
-  G, NIN, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, mutateStructure, founderBrain, founderGenome, presetGenome, GENE, genomeDistance, mutate, randomGenome,
+  G, NIN, NIN_BASE, NH, NOUT, TAU, Traits, brainForward, compatProb, crossover, mutateStructure, founderBrain, founderGenome, presetGenome, GENE, genomeDistance, mutate, randomGenome,
 } from './genome';
 import { CAUSE, Lineage } from './lineage';
 import { Rng } from './rng';
@@ -28,6 +28,7 @@ export class Ind {
   id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0; f = 1; f075 = 1; // f: 성장 정도(현재 구조 에너지/성체)
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
+  mem = new Float32Array(NH); // 되먹임 기억(직전 틱 은닉 노드 값)
   oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
 }
 
@@ -173,7 +174,7 @@ export class World {
     if (!plain.length && !waterCells.length) return 0;
     for (let k = 0; k < count; k++) {
       if (founder && k > 0 && k % 20 === 0) base = founderBrain(rng); // 20마리마다 다른 원형 뇌 (한 번의 운에 전멸하지 않도록 변이 확보)
-      const g = founder ? presetGenome(preset, rng, base!, undefined, !!cfg.features.neat) : randomGenome(rng, undefined, !!cfg.features.neat);
+      const g = founder ? presetGenome(preset, rng, base!, undefined, !!cfg.features.neat, !!cfg.features.memory) : randomGenome(rng, undefined, !!cfg.features.neat, !!cfg.features.memory);
       const ind = new Ind();
       ind.genome = g; ind.t.decode(g, cfg);
       const pool = ind.t.aq > 0.5 && waterCells.length ? waterCells : plain.length ? plain : waterCells;
@@ -469,6 +470,7 @@ export class World {
     inp[13] = noise ? this.rng.next() * 2 - 1 : 0;
     inp[14] = Math.sin(ind.age * t.osc);
     inp[15] = ind.hurt;
+    if (cfg.features.memory) for (let j = 0; j < NH; j++) inp[NIN_BASE + j] = ind.mem[j]; // 기억 입력
     { // 앞쪽 지형: 진행 방향 (반지름+1.2) 앞의 지형. 물가/해안선을 미리 '볼' 수 있다
       const ax = ind.x + ca * (t.radius + 1.2), ay = ind.y + sa * (t.radius + 1.2);
       inp[18] = ax < 0 || ay < 0 || ax >= w || ay >= h ? 1 : this.terrain[(ay | 0) * w + (ax | 0)] * 0.5;
@@ -523,6 +525,7 @@ export class World {
       if (F.brain) {
         this.sense(ind, this.inp, true);
         brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
+        if (F.memory) for (let j = 0; j < NH; j++) ind.mem[j] = this.hid[j]; // 이번 은닉 값을 다음 틱을 위해 기억
         const o = this.out;
         ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6];
       } else { // 귀무 모형: 순수 난수 출력

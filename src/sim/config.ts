@@ -6,6 +6,7 @@ export interface Features {
   biomes: boolean;    // 바이옴(식물 종 편향, 기온대)
   seasons: boolean;   // 계절 변동
   sexual: boolean;    // 유성생식
+  memory?: boolean;   // 되먹임 기억: 직전 틱 은닉 노드 값을 입력으로 다시 쓴다 (옵션)
   neat?: boolean;     // 뇌 구조 변이(NEAT식): 연결·노드 추가/제거 (옵션)
 }
 
