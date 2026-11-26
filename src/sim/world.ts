@@ -15,7 +15,7 @@ export type Intervention =
   | ({ kind: 'terrain'; value: 0 | 1 | 2 } & Shape)
   | ({ kind: 'biome'; plant?: number; zone?: number } & Shape)
   | ({ kind: 'food'; delta: number } & Shape)
-  | { kind: 'global'; sun?: number; meanTemp?: number; seasonAmp?: number; seasonPeriod?: number; restartOnExtinction?: boolean }
+  | { kind: 'global'; sun?: number; meanTemp?: number; seasonAmp?: number; seasonPeriod?: number; restartOnExtinction?: boolean; neat?: boolean; memory?: boolean }
   | ({ kind: 'meteor' } & Shape)
   | ({ kind: 'plague' } & Shape)
   | { kind: 'climate'; delta: number; duration: number };
@@ -283,6 +283,12 @@ export class World {
         if (iv.seasonAmp !== undefined) this.seasonAmpG = iv.seasonAmp;
         if (iv.seasonPeriod !== undefined) this.seasonPeriodG = Math.max(50, iv.seasonPeriod);
         if (iv.restartOnExtinction !== undefined) cfg.restartOnExtinction = iv.restartOnExtinction; // 개입 로그에 기록되므로 재현 가능
+        // 뇌 규칙(월드 규칙)이지 개체 편집이 아니다. 로그에 남아 재현된다
+        if (iv.neat !== undefined && !!iv.neat !== !!cfg.features.neat) {
+          cfg.features.neat = iv.neat;
+          for (const ind of this.inds) ind.t.decode(ind.genome, cfg); // 뇌 유지비(brainCost)가 neat 여부로 달라지므로 형질 캐시를 다시 계산 (스냅샷 복원과 같아야 한다)
+        }
+        if (iv.memory !== undefined) cfg.features.memory = iv.memory;
         break;
       case 'meteor':
         for (const ind of this.inds) if (ind.alive && this.inShape(iv, ind.x, ind.y)) this.kill(ind, CAUSE.METEOR);

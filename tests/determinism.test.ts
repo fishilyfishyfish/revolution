@@ -86,3 +86,30 @@ describe('저장 뒤에 추가된 설정 항목', () => {
     expect(bad).toBe(0);
   });
 });
+
+describe('실행 중 뇌 규칙 변경(neat/memory)', () => {
+  const live: Record<number, Intervention> = {
+    100: { kind: 'global', neat: true, memory: true },
+    300: { kind: 'global', memory: false },
+    500: { kind: 'global', neat: false },
+  };
+  it('로그 재생·스냅샷 이어달리기가 같고, 에너지 회계가 맞는다', () => {
+    const a = mk(4);
+    for (let i = 0; i < 700; i++) {
+      const iv = live[a.tick]; if (iv) a.intervene(iv);
+      const b0 = a.totalEnergy().total; stepSim(a);
+      expect(Math.abs(a.totalEnergy().total - b0 - (a.tickIn - a.tickOut)) / Math.max(1, b0)).toBeLessThan(1e-9);
+    }
+    expect(a.cfg.features.neat).toBe(false); expect(a.cfg.features.memory).toBe(false);
+    const b = mk(4);
+    for (const e of a.log) b.schedule(e.tick, e.iv);
+    for (let i = 0; i < 700; i++) stepSim(b);
+    expect(b.checksum()).toBe(a.checksum());
+    const c = mk(4); run(c, 350, live);
+    const d = deserialize(serialize(c)); run(c, 350, live); run(d, 350, live);
+    expect(d.checksum()).toBe(c.checksum());
+  });
+  it('켜면 실제로 결과가 달라진다', () => {
+    expect(run(mk(4), 400, live).checksum()).not.toBe(run(mk(4), 400, {}).checksum());
+  });
+});

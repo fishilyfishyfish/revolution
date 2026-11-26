@@ -82,6 +82,7 @@ function newWorld() {
   if (!founders.length) founders.push({ preset: 'herb', count: 300 });
   const waterLevel = +($('water') as HTMLSelectElement).value;
   hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
+  ($('memoryLive') as HTMLInputElement).checked = ($('memory') as HTMLInputElement).checked; ($('neatLive') as HTMLInputElement).checked = ($('neat') as HTMLInputElement).checked;
   client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, restartOnExtinction: ($('respawn') as HTMLInputElement).checked, features: { neat: ($('neat') as HTMLInputElement).checked, memory: ($('memory') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
 }
 $('reset').onclick = newWorld;
@@ -182,6 +183,9 @@ for (const [id, key] of [['gSun', 'sun'], ['gTemp', 'meanTemp'], ['gAmp', 'seaso
   el.onchange = () => { client.send({ t: 'iv', iv: { kind: 'global', [key]: +el.value } as Intervention }); toast('전역 값 변경 기록됨'); };
 }
 ($('respawn') as HTMLInputElement).onchange = (e) => client.send({ t: 'iv', iv: { kind: 'global', restartOnExtinction: (e.target as HTMLInputElement).checked } });
+for (const [id, key] of [['memoryLive', 'memory'], ['neatLive', 'neat']] as const) {
+  ($(id) as HTMLInputElement).onchange = (e) => { client.send({ t: 'iv', iv: { kind: 'global', [key]: (e.target as HTMLInputElement).checked } as Intervention }); toast('뇌 규칙 변경 기록됨'); };
+}
 $('iceAge').onclick = () => { toast('🧊 빙하기 시작 (서서히 기온 하강)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: -Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
 $('warming').onclick = () => { toast('🔥 온난화 시작 (서서히 기온 상승)'); client.send({ t: 'iv', iv: { kind: 'climate', delta: Math.abs(+($('cDelta') as HTMLInputElement).value), duration: +($('cDur') as HTMLInputElement).value } }); };
 
