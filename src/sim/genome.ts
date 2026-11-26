@@ -10,9 +10,9 @@ export const W1 = 0, B1 = NIN * NH, W2 = B1 + NH, B2 = W2 + NH * NOUT, NB = B2 +
 export const GENE = {
   SIZE: 0, VMAX: 1, VIS: 2, ANG: 3, D0: 4, D1: 5, D2: 6, DM: 7, TOPT: 8, RES: 9,
   THR: 10, GIVE: 11, SEX: 12, MUT: 13, HUE: 14, OSC: 15, AQ: 16, LONG: 17,
-  ARMOR: 18, CLAW: 19, TOXIN: 20, SMELL: 21, HEAR: 22, TWID: 23, INSUL: 24, HIBER: 25, CLUTCH: 26, PICKY: 27, IMM: 28,
+  ARMOR: 18, CLAW: 19, TOXIN: 20, SMELL: 21, HEAR: 22, TWID: 23, INSUL: 24, HIBER: 25, CLUTCH: 26, PICKY: 27, IMM: 28, GUT: 29,
 } as const;
-export const NT = 29;
+export const NT = 30;
 export const BO = NT;
 // 뇌 구조 마스크(NEAT식 구조 변이용): 연결·은닉 노드마다 켜짐(1)/꺼짐(0). 구조 변이를 끄면 전부 1로 고정된다.
 export const NM = NIN * NH + NH * NOUT + NH;
@@ -26,7 +26,7 @@ export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '
   '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자', '최근 피해', '개체 발톱', '기온 편차', '앞쪽 지형', '개체 속도', '개체 접근', '기억 1', '기억 2', '기억 3', '기억 4', '기억 5', '기억 6', '기억 7', '기억 8'];
 export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호', '웅크림(방어)', '휴식'];
 export const TRAIT_NAMES = ['몸 크기', '최대 속도', '시야 거리', '시야 각도', '식물A 소화', '식물B 소화', '식물C 소화',
-  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응', '수명', '피부/갑옷', '이빨·발톱', '독', '후각', '청각', '기온 허용폭', '단열', '겨울잠', '한배 새끼 수', '짝 까다로움', '면역형'];
+  '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응', '수명', '피부/갑옷', '이빨·발톱', '독', '후각', '청각', '기온 허용폭', '단열', '겨울잠', '한배 새끼 수', '짝 까다로움', '면역형', '소화관(섭식 용량)'];
 
 const c01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
@@ -37,7 +37,7 @@ export class Traits {
   tOpt = 0; res = 0; thr = 0; give = 0; sex = 0; mut = 0; hue = 0; osc = 0;
   maxReserve = 0; structE = 0; m075 = 0; basal = 0; visCost = 0; brainCost = 0;
   turnMax = 0; biteCap = 0; attackPow = 0; foodThr = 0;
-  nodes = NH; conns = NIN * NH + NH * NOUT; imm = 0; lifespan = 0; armor = 0; claw = 0; toxin = 0; smellR = 0; hearR = 0; tolW = 0; insul = 0; hiber = 0; clutchMax = 1; picky = 0; moveMul = 1; tempLethal = 0; aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
+  nodes = NH; conns = NIN * NH + NH * NOUT; imm = 0; gut = 0; intakeMul = 1; lifespan = 0; armor = 0; claw = 0; toxin = 0; smellR = 0; hearR = 0; tolW = 0; insul = 0; hiber = 0; clutchMax = 1; picky = 0; moveMul = 1; tempLethal = 0; aq = 0; spWater = 0; spLand = 0; cWater = 0; cLand = 0;
 
   decode(g: Float32Array, cfg: Config): this {
     this.size = 0.5 + 2.5 * c01(g[GENE.SIZE]);
@@ -82,13 +82,15 @@ export class Traits {
     this.clutchMax = 1 + Math.floor(3 * c01(g[GENE.CLUTCH]) * 0.999); // 이득: 한 번에 최대 N마리 / 비용: 새끼당 에너지 1/N
     this.picky = c01(g[GENE.PICKY]);   // 이득: 호환성 낮은 짝 회피(헛수고↓) / 비용: 짝 후보↓
     this.moveMul = 1 + 0.6 * this.armor;
+    this.gut = c01(g[GENE.GUT]);              // 이득: 한 입 용량 ×(0.5+2.5·g) / 비용: 기초대사 +cGut·g
+    this.intakeMul = 0.5 + 2.5 * this.gut;
     this.imm = c01(g[GENE.IMM]); // 면역형(MHC 같은 대립유전자): 병원체 균주와 가까울수록 감염되기 쉽다 (빈도 의존)
     const m075 = Math.pow(this.mass, 0.75);
     this.m075 = m075;
     this.maxReserve = cfg.kStore * this.mass;
     this.structE = cfg.kStruct * this.mass;
     this.basal = cfg.cBasal * m075 * (1 + cfg.cRes * this.res) * (1 + cfg.cRepair * (1 - gm)) * (1 + cfg.cLong * lg)
-      * (1 + 0.5 * this.armor) * (1 + 0.3 * this.claw) * (1 + 0.4 * this.toxin) * (1 + 0.3 * tw) * (1 + 0.4 * this.insul) * (1 + 0.15 * this.hiber);
+      * (1 + 0.5 * this.armor) * (1 + 0.3 * this.claw) * (1 + 0.4 * this.toxin) * (1 + 0.3 * tw) * (1 + 0.4 * this.insul) * (1 + 0.15 * this.hiber) * (1 + cfg.cGut * this.gut);
     this.visCost = cfg.cVision * 0.5 * this.vis * this.vis * this.ang + cfg.cSense * (this.smellR * this.smellR + this.hearR * this.hearR);
     if (cfg.features.neat) { // 구조 변이: 활성 연결·노드가 많을수록 유지비↑ (복잡한 뇌는 값어치를 해야 한다)
       let nn = 0, nc = 0;
@@ -102,7 +104,7 @@ export class Traits {
       this.brainCost = cfg.cBrain * 0.3 + cfg.cBrainStruct * (nc + 2 * nn) / MAXC;
     } else this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
     this.turnMax = cfg.turnK / this.size;
-    this.biteCap = cfg.biteK * m075;
+    this.biteCap = cfg.biteK * m075 * this.intakeMul;
     this.foodThr = Math.max(cfg.plantMin, 0.8 * this.biteCap); // 한 입 거리가 되는 먹이만 '보인다'
     this.attackPow = cfg.attackK * Math.pow(this.mass, 1.25) * (1 + 1.5 * this.claw);
     return this;
@@ -110,7 +112,7 @@ export class Traits {
 }
 
 // 창시 집단의 형질 시작값 (유전자 순서대로). 옛 저장 파일 변환 때 새 형질의 기본값으로도 쓴다.
-export const FOUNDER_MID = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1, 0.5];
+export const FOUNDER_MID = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1, 0.5, 0.2];
 
 export function founderBrain(rng: Rng): Float32Array {
   const b = new Float32Array(NB);
@@ -124,6 +126,7 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   out[GENE.IMM] = rng.next(); // 면역형은 창시 집단에서도 다양하다
+  out[GENE.GUT] = c01(0.2 + rng.gauss() * 0.15); // 소화관(섭식 용량)도 창시 집단 안에서 꽤 다양하다
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.4;
   // 창시 집단은 웅크림·휴식 출력이 기본 '꺼짐' 쪽에서 시작한다 (진화로 켜질 수는 있다)
   out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2;

@@ -139,7 +139,7 @@ describe('세부 형질: 이득과 비용', () => {
   const cfg = defaultConfig(); const rng = new Rng(9); const base = founderBrain(rng); const g0 = founderGenome(rng, base);
   const dec = (k: keyof typeof GENE, v: number) => { const h = g0.slice(); h[GENE[k]] = v; return new Traits().decode(h, cfg); };
   it('갑옷·발톱·독·단열·허용폭·겨울잠·수명은 유지비가 오른다', () => {
-    for (const k of ['ARMOR', 'CLAW', 'TOXIN', 'INSUL', 'TWID', 'HIBER', 'LONG'] as const) expect(dec(k, 1).basal, k).toBeGreaterThan(dec(k, 0).basal);
+    for (const k of ['ARMOR', 'CLAW', 'TOXIN', 'INSUL', 'TWID', 'HIBER', 'LONG', 'GUT'] as const) expect(dec(k, 1).basal, k).toBeGreaterThan(dec(k, 0).basal);
   });
   it('후각·청각은 반경이 클수록 유지비↑', () => {
     expect(dec('SMELL', 1).visCost).toBeGreaterThan(dec('SMELL', 0).visCost);
@@ -150,6 +150,7 @@ describe('세부 형질: 이득과 비용', () => {
     expect(dec('TWID', 1).tempLethal).toBeGreaterThan(dec('TWID', 0).tempLethal);
     expect(dec('CLUTCH', 1).clutchMax).toBeGreaterThan(dec('CLUTCH', 0).clutchMax);
     expect(dec('ARMOR', 1).moveMul).toBeGreaterThan(dec('ARMOR', 0).moveMul);
+    expect(dec('GUT', 1).biteCap).toBeGreaterThan(dec('GUT', 0).biteCap * 5); // 소화관: 한 입 용량 ×6
   });
   it('전 기능 장부 보존 (한배 새끼·겨울잠·독 포함)', () => {
     const w = World.create(defaultConfig({ w: 40, h: 30, seed: 6, founders: [{ preset: 'herb', count: 80 }, { preset: 'predator', count: 20 }, { preset: 'fish', count: 40 }], features: STAGES[7] }));
