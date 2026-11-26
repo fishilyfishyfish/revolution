@@ -3,6 +3,7 @@ import { STAGES, defaultConfig } from '../sim/config';
 import { World, Intervention, NPLANT } from '../sim/world';
 import { stepSim } from '../sim/runner';
 import { deserialize, serialize, Snapshot } from '../sim/snapshot';
+import { ancestryOf } from '../sim/analysis';
 import { BO, GENE, MO, NB, NM, TRAIT_NAMES } from '../sim/genome';
 import type { FromWorker, InspectData, SnapMeta, ToWorker } from './protocol';
 
@@ -154,6 +155,7 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       break;
     }
     case 'inspect': if (world) inspect(m.id); break;
+    case 'ancestry': if (world) post({ t: 'ancestry', data: ancestryOf(world.lineage, world.inds.map((i) => i.id)), restarts: world.events.filter((e) => e.kind === 'extinction').map((e) => e.tick), tick: world.tick }); break;
     case 'resend': if (world) { mapsDirty = true; frame(); stats(); post({ t: 'snaps', list: snapList() }); } break;
   }
 };

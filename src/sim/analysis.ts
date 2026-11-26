@@ -1,5 +1,6 @@
 import { BO, G, NB, TAU, genomeDistance, Traits } from './genome';
 import { World, Ind, SpeciesRec } from './world';
+import type { Lineage } from './lineage';
 
 export const MIN_SPECIES = 8; // 종 수 집계 시 최소 개체 수
 
@@ -190,4 +191,32 @@ export function classify(w: World) {
   const flat: number[] = [];
   for (const r of w.spA) if (r.died < 0 && r.count > 0) flat.push(r.id, r.count);
   w.spHist.push([w.tick, flat]);
+}
+
+// ── 조상 구성: 현재 개체들에서 계보를 거꾸로 따라가며 유전적 기여를 나눈다 ──
+// 개체 id는 태어난 순서대로 커지므로(부모 id < 자식 id) id가 큰 쪽부터 한 번만 훑으면 된다.
+// 무성생식은 부모 한 명이 전부, 유성생식은 부모 두 명이 절반씩 기여한다.
+export interface AncestryRoot { id: number; birth: number; share: number }
+export interface Ancestry {
+  nAlive: number;
+  roots: AncestryRoot[];                       // 창시 개체(부모 없음)별 현재 유전자풀 기여, 큰 순
+  mrca: { id: number; birth: number; share: number } | null; // 모든 현재 개체가 (거의) 전부 거쳐 온 가장 젊은 조상
+}
+export function ancestryOf(L: Lineage, aliveIds: number[]): Ancestry {
+  const n = aliveIds.length;
+  if (!n) return { nAlive: 0, roots: [], mrca: null };
+  let top = 0; for (const id of aliveIds) if (id > top) top = id;
+  const wgt = new Float64Array(top + 1);
+  for (const id of aliveIds) wgt[id] += 1 / n;
+  const roots: AncestryRoot[] = []; let mrca: Ancestry['mrca'] = null;
+  for (let id = top; id >= 0; id--) {
+    const w = wgt[id]; if (w <= 0) continue;
+    if (!mrca && w >= 0.999 && n > 0) mrca = { id, birth: L.birth[id], share: w };
+    const pa = L.pa[id], pb = L.pb[id];
+    if (pa < 0) roots.push({ id, birth: L.birth[id], share: w });
+    else if (pb < 0) wgt[pa] += w;
+    else { wgt[pa] += w * 0.5; wgt[pb] += w * 0.5; }
+  }
+  roots.sort((a, b) => b.share - a.share);
+  return { nAlive: n, roots, mrca };
 }

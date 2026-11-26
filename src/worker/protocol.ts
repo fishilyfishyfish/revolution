@@ -12,6 +12,7 @@ export type ToWorker =
   | { t: 'getSnap'; id: number; purpose: 'branch' | 'save' | 'export' }
   | { t: 'saveNow' }
   | { t: 'inspect'; id: number }
+  | { t: 'ancestry' }
   | { t: 'resend' };
 
 export interface FrameMsg {
@@ -40,6 +41,7 @@ export type FromWorker =
   | FrameMsg | StatsMsg
   | { t: 'snaps'; list: SnapMeta[] }
   | { t: 'snap'; id: number; purpose: string; snap: Snapshot; iv: Intervention | null }
+  | { t: 'ancestry'; data: import('../sim/analysis').Ancestry; restarts: number[]; tick: number }
   | { t: 'inspect'; data: InspectData | null };
 
 export interface InspectData {

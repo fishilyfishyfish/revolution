@@ -250,3 +250,32 @@ describe('현실화: 성장·씨앗·배경 질병', () => {
     expect(s(near)).toBeGreaterThan(s(far));
   });
 });
+
+import { ancestryOf } from '../src/sim/analysis';
+import { Lineage } from '../src/sim/lineage';
+describe('조상 구성(계보 역추적)', () => {
+  it('무성 계통: 한 창시자의 후손이고 공통 조상을 찾는다', () => {
+    const L = new Lineage();
+    const a = L.add(-1, -1, 0, 0), b = L.add(-1, -1, 0, 0);       // 창시자 2명
+    const c = L.add(a, -1, 10, 0), d = L.add(c, -1, 20, 0), e = L.add(c, -1, 21, 0); // 둘 다 c의 후손
+    const r = ancestryOf(L, [d, e]);
+    expect(r.roots.length).toBe(1); expect(r.roots[0].id).toBe(a); expect(r.roots[0].share).toBeCloseTo(1, 9);
+    expect(r.mrca!.id).toBe(c); void b;
+  });
+  it('유성생식은 부모 두 명이 절반씩 기여하고 합은 1이다', () => {
+    const L = new Lineage();
+    const a = L.add(-1, -1, 0, 0), b = L.add(-1, -1, 0, 0);
+    const c = L.add(a, b, 5, 0);
+    const r = ancestryOf(L, [c]);
+    expect(r.roots.map((x) => x.share).reduce((s, v) => s + v, 0)).toBeCloseTo(1, 9);
+    expect(r.roots[0].share).toBeCloseTo(0.5, 9);
+    expect(r.mrca!.id).toBe(c); // 개체가 하나뿐이면 자기 자신
+  });
+  it('실제 월드에서도 기여도 합이 1', () => {
+    const w = World.create(defaultConfig({ w: 40, h: 30, seed: 3, initPop: 150, features: STAGES[7] }));
+    for (let t = 0; t < 600; t++) stepSim(w);
+    const r = ancestryOf(w.lineage, w.inds.map((i) => i.id));
+    expect(r.nAlive).toBe(w.inds.length);
+    expect(r.roots.reduce((s, x) => s + x.share, 0)).toBeCloseTo(1, 6);
+  });
+});

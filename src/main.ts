@@ -39,6 +39,7 @@ client.onMsg = (m: FromWorker) => {
     st = m; chartsDirty = true; updateHud(); renderLegend();
   } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length && !snapToastShown) { snapToastShown = true; toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); } snapMetas = m.list; renderSnaps(); }
   else if (m.t === 'inspect') { insp = m.data; renderInspect(); }
+  else if (m.t === 'ancestry') renderAncestry(m);
   else if (m.t === 'snap') {
     if (m.purpose === 'save') {
       const blob = new Blob([snapshotToJSON(m.snap)], { type: 'application/json' });
@@ -247,6 +248,19 @@ function renderLegend() {
   head.onclick = () => { legendOpen = !legendOpen; try { localStorage.setItem('evo-legend', legendOpen ? '1' : '0'); } catch { /* 무시 */ } renderLegend(); };
   el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; hlSpecies = hlSpecies === id ? -1 : id; renderLegend(); dirty = true; });
 }
+function renderAncestry(m: Extract<FromWorker, { t: 'ancestry' }>) {
+  const a = m.data, el = $('ancestry');
+  if (!a.nAlive) { el.textContent = '살아있는 개체가 없어요'; return; }
+  const origin = (b: number) => (b === 0 ? '처음 창시 집단' : m.restarts.includes(b) || m.restarts.includes(b - 1) ? `틱 ${b} 전멸 후 재시작 집단` : `틱 ${b}`);
+  const top = a.roots.filter((r) => r.share >= 0.01).slice(0, 4);
+  const lines = [`🧬 <b>조상 구성</b> · 현재 ${a.nAlive}마리`];
+  if (a.roots.length === 1 || (top[0] && top[0].share > 0.999)) lines.push(`전부 한 창시 개체(#${a.roots[0].id}, ${origin(a.roots[0].birth)})의 후손이에요`);
+  else lines.push(`창시 개체 ${a.roots.length}명의 후손 · ` + top.map((r) => `#${r.id} ${(r.share * 100).toFixed(0)}% (${origin(r.birth)})`).join(', '));
+  if (a.mrca) lines.push(`가장 가까운 공통 조상: #${a.mrca.id} (틱 ${a.mrca.birth}에 태어남, ${m.tick - a.mrca.birth}틱 전)${a.mrca.share >= 0.999 && a.roots.length === 1 ? '' : ''}`);
+  else lines.push('모두가 거쳐 온 단일 조상은 아직 없어요 (유성생식으로 섞이는 중)');
+  el.innerHTML = lines.join('<br>');
+}
+setInterval(() => { if (document.getElementById('tab-species')!.classList.contains('on') && $('side').classList.contains('open')) client.send({ t: 'ancestry' }); }, 3000);
 function updateHud() {
   if (!st || !lastFrame) return;
   const e = st.env, ph = ((lastFrame.tick / e.seasonPeriod) % 1 + 1) % 1;
