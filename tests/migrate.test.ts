@@ -35,7 +35,7 @@ function downMap(cur: Float32Array, L: OldLayout): Float32Array {
 describe('옛 저장 파일 변환', () => {
   it('지원하는 옛 구조 목록의 게놈 길이는 현재와 모두 다르다', () => {
     for (const L of OLD) expect(L.G).not.toBe(G);
-    expect(OLD.map((l) => l.G)).toEqual([189, 190, 191, 243, 251, 467, 468, 500, 628]);
+    expect(OLD.map((l) => l.G)).toEqual([189, 190, 191, 243, 251, 467, 468, 500, 628, 629]);
   });
 
   for (const L of OLD) {

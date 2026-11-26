@@ -29,7 +29,7 @@ export class Ind {
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
   mem = new Float32Array(NH); // 되먹임 기억(직전 틱 은닉 노드 값)
-  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
+  oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; oAtk = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
 }
 
 export interface SpeciesRec {
@@ -527,11 +527,11 @@ export class World {
         brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
         if (F.memory) { const lk = cfg.memLeak; for (let j = 0; j < NH; j++) ind.mem[j] += lk * (this.hid[j] - ind.mem[j]); } // 천천히 변하는 기억: 새 값 memLeak, 이전 기억 1−memLeak
         const o = this.out;
-        ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6];
+        ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6]; ind.oAtk = o[7];
       } else { // 귀무 모형: 순수 난수 출력
         ind.oTurn = rng.next() * 2 - 1; ind.oAcc = rng.next() * 2 - 1; ind.oBite = rng.next() * 2 - 1;
         ind.oRep = rng.next() * 2 - 1; ind.oMate = rng.next() * 2 - 1;
-        ind.oGuard = rng.next() * 2 - 1; ind.oRest = rng.next() * 2 - 1;
+        ind.oGuard = rng.next() * 2 - 1; ind.oRest = rng.next() * 2 - 1; ind.oAtk = rng.next() * 2 - 1;
       }
       if (F.reproduce) {
         if (ind.rec > 0) { // 짝 찾기 상태 유지: 신호(출력)가 켜진 틱에만 광고
@@ -639,10 +639,22 @@ export class World {
     if (this.mortality(ind, terr, dT)) return;
 
     // 먹기/공격
-    if (ind.oBite > 0 && !still) {
+    if (cfg.features.splitAttack) {
+      // 공격(개체를 무는 행동)과 먹기(바닥의 식물·사체)는 별개의 출력이다
+      if (ind.oAtk > 0 && !still && cfg.features.attack) {
+        this.pay(ind, cfg.cAct * t.m075, 5);
+        if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
+        this.bite(ind, 2);
+      }
+      if (ind.alive && ind.oBite > 0 && !still) {
+        this.pay(ind, cfg.cAct * t.m075, 5);
+        if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
+        this.bite(ind, 1);
+      }
+    } else if (ind.oBite > 0 && !still) {
       this.pay(ind, cfg.cAct * t.m075, 5);
       if (ind.reserve <= 0) { this.kill(ind, ind.inf > 0 ? CAUSE.DISEASE : CAUSE.STARVED); return; }
-      this.bite(ind);
+      this.bite(ind, 0);
     }
 
     // 번식
@@ -670,12 +682,14 @@ export class World {
     return false;
   }
 
-  private bite(ind: Ind) {
+  // mode 0: 합쳐진 옛 방식(앞에 개체가 있으면 공격, 없으면 먹기) / 1: 먹기만 / 2: 공격만
+  private bite(ind: Ind, mode = 0) {
     const cfg = this.cfg, t = ind.t;
+    const str = mode === 2 ? ind.oAtk : ind.oBite;
     const rI = this.rad(ind);
     const mx = ind.x + Math.cos(ind.a) * (rI + 0.1), my = ind.y + Math.sin(ind.a) * (rI + 0.1);
     // 입 앞에 개체가 있으면 공격
-    if (cfg.features.attack) {
+    if (cfg.features.attack && mode !== 1) {
       let victim: Ind | null = null, bd = 1e9;
       const nbx = this.nbx, nby = this.nby;
       const bx0 = Math.max(0, Math.floor((mx - 3) / BS)), bx1 = Math.min(nbx - 1, Math.floor((mx + 3) / BS));
@@ -696,8 +710,8 @@ export class World {
         const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1) * refugeMul;
         // atkRatio>0: 한 번의 공격 피해가 상대 몸집에 비례한다. 자기보다 큰 상대는 천천히, 작은 상대는 몇 번 만에 제압한다.
         const raw = cfg.atkRatio > 0
-          ? Math.min(1, cfg.atkRatio * Math.pow((t.mass * ind.f * (1 + 1.5 * t.claw)) / (victim.t.mass * victim.f), 0.75)) * victim.t.maxReserve * victim.f * ind.oBite
-          : t.attackPow * ind.f * ind.oBite;
+          ? Math.min(1, cfg.atkRatio * Math.pow((t.mass * ind.f * (1 + 1.5 * t.claw)) / (victim.t.mass * victim.f), 0.75)) * victim.t.maxReserve * victim.f * str
+          : t.attackPow * ind.f * str;
         const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, raw / shield);
         victim.reserve -= dmg;
         victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / (victim.t.maxReserve * victim.f));
@@ -711,6 +725,7 @@ export class World {
         return;
       }
     }
+    if (mode === 2) return; // 공격만: 바닥의 음식은 먹지 않는다
     // 바닥의 음식
     const c = this.cellOf(mx < 0 ? 0 : mx >= this.w ? this.w - 0.001 : mx, my < 0 ? 0 : my >= this.h ? this.h - 0.001 : my);
     const a0 = this.plants[0][c], a1 = this.plants[1][c], a2 = this.plants[2][c], ac = this.corpse[c];

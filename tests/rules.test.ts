@@ -73,7 +73,7 @@ describe('유전/뇌', () => {
     expect(genomeDistance(a, d)).toBeGreaterThan(0);
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
-    expect([NIN, NH, NOUT]).toEqual([29, 8, 7]);
+    expect([NIN, NH, NOUT]).toEqual([29, 8, 8]);
     expect(G).toBe(NT + NB + NM);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
@@ -304,5 +304,42 @@ describe('되먹임 기억 옵션', () => {
     const s = serialize(a); const c = deserialize(snapshotFromJSON(snapshotToJSON(s)));
     for (let t = 0; t < 150; t++) { stepSim(a); stepSim(c); }
     expect(c.checksum()).toBe(a.checksum());
+  });
+});
+
+describe('먹기와 공격의 분리', () => {
+  const setup = () => {
+    const w = World.create(defaultConfig({ w: 30, h: 30, seed: 3, initPop: 4, genTerrain: false, features: STAGES[7] }));
+    const [a, v] = w.inds; for (const o of w.inds.slice(2)) w.kill(o, 0);
+    w.inds = w.inds.filter((i) => i.alive);
+    const rad = (i: any) => (w as any).rad(i);
+    a.x = 10; a.y = 10; a.a = 0; a.f = 1; a.f075 = 1; v.f = 1; v.f075 = 1;
+    v.x = a.x + rad(a) + 0.1 + rad(v); v.y = a.y; // 입 바로 앞
+    a.reserve = a.t.maxReserve * 0.3; v.reserve = v.t.maxReserve * 0.9;
+    w.buildHash();
+    return { w, a, v };
+  };
+  it('먹기 출력으로는 개체를 해치지 못한다 (먹기 전용 모드)', () => {
+    const { w, a, v } = setup(); a.oBite = 1; a.oAtk = -1;
+    const r0 = v.reserve; (w as any).bite(a, 1);
+    expect(v.reserve).toBe(r0); expect(v.alive).toBe(true);
+  });
+  it('공격 출력이 켜져야 피해를 준다 (공격 전용 모드), 꺼져 있으면 아무 일도 없다', () => {
+    const { w, a, v } = setup(); a.oAtk = 1;
+    const r0 = v.reserve; (w as any).bite(a, 2);
+    expect(v.reserve).toBeLessThan(r0);
+  });
+  it('창시 집단은 공격 출력이 기본 꺼짐이다', () => {
+    const w = World.create(defaultConfig({ w: 30, h: 30, seed: 2, initPop: 60, features: STAGES[7] }));
+    for (let t = 0; t < 5; t++) stepSim(w);
+    const on = w.inds.filter((i) => i.oAtk > 0).length;
+    expect(on).toBeLessThan(w.inds.length * 0.5); // 편향이 꺼짐 쪽이라 무작위(50%)보다 적다
+  });
+  it('전 기능에서 에너지 장부가 맞는다 (공격 분리 포함)', () => {
+    const w = World.create(defaultConfig({ w: 40, h: 30, seed: 9, founders: [{ preset: 'herb', count: 80 }, { preset: 'predator', count: 30 }], features: STAGES[7] }));
+    for (let t = 0; t < 400; t++) {
+      const b = w.totalEnergy().total; stepSim(w); const a = w.totalEnergy().total;
+      expect(Math.abs(a - b - (w.tickIn - w.tickOut)) / Math.max(1, a)).toBeLessThan(1e-9);
+    }
   });
 });

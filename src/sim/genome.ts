@@ -3,7 +3,7 @@ import { Rng } from './rng';
 
 // ── 뇌 구조 (고정) ──
 export const NIN_BASE = 21; // 감각 입력 수
-export const NIN = NIN_BASE + 8, NH = 8, NOUT = 7; // + 직전 틱 은닉 노드 값(기억) 8개
+export const NIN = NIN_BASE + 8, NH = 8, NOUT = 8; // + 직전 틱 은닉 노드 값(기억) 8개
 export const W1 = 0, B1 = NIN * NH, W2 = B1 + NH, B2 = W2 + NH * NOUT, NB = B2 + NOUT; // 173
 
 // ── 게놈 레이아웃: [형질 16개][뇌 가중치 173개] ──
@@ -24,7 +24,7 @@ export const TAU = Math.PI * 2;
 
 export const INPUT_NAMES = ['식물 방향', '식물 거리', '식물 종류', '사체 방향', '사체 거리', '개체 방향', '개체 거리',
   '개체 크기', '개체 색', '개체 유사도', '내 에너지', '기온', '지형', '노이즈', '진동자', '최근 피해', '개체 발톱', '기온 편차', '앞쪽 지형', '개체 속도', '개체 접근', '기억 1', '기억 2', '기억 3', '기억 4', '기억 5', '기억 6', '기억 7', '기억 8'];
-export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호', '웅크림(방어)', '휴식'];
+export const OUTPUT_NAMES = ['회전', '가속', '먹기/공격', '번식 시도', '짝짓기 신호', '웅크림(방어)', '휴식', '공격'];
 export const TRAIT_NAMES = ['몸 크기', '최대 속도', '시야 거리', '시야 각도', '식물A 소화', '식물B 소화', '식물C 소화',
   '고기 소화', '적정 기온', '질병 저항', '번식 임계', '자식 에너지', '유성 성향', '돌연변이율', '색', '진동수', '수생 적응', '수명', '피부/갑옷', '이빨·발톱', '독', '후각', '청각', '기온 허용폭', '단열', '겨울잠', '한배 새끼 수', '짝 까다로움', '면역형', '소화관(섭식 용량)'];
 
@@ -129,7 +129,7 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
   out[GENE.GUT] = c01(0.2 + rng.gauss() * 0.15); // 소화관(섭식 용량)도 창시 집단 안에서 꽤 다양하다
   for (let i = 0; i < NB; i++) out[BO + i] = base[i] + rng.gauss() * 0.4;
   // 창시 집단은 웅크림·휴식 출력이 기본 '꺼짐' 쪽에서 시작한다 (진화로 켜질 수는 있다)
-  out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2;
+  out[BO + B2 + 5] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 6] = -0.8 + rng.gauss() * 0.2; out[BO + B2 + 7] = -0.8 + rng.gauss() * 0.2; // 웅크림·휴식·공격은 기본 꺼짐
   initMasks(out, rng, neat);
   if (!memory) zeroMemoryWeights(out); // 기억 옵션이 꺼져 있으면 기억 입력의 가중치는 0에서 시작
   return out;

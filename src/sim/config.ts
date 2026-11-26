@@ -6,6 +6,7 @@ export interface Features {
   biomes: boolean;    // 바이옴(식물 종 편향, 기온대)
   seasons: boolean;   // 계절 변동
   sexual: boolean;    // 유성생식
+  splitAttack?: boolean; // true: 먹기와 공격이 별개의 뇌 출력 (먹기로는 개체를 해칠 수 없다)
   memory?: boolean;   // 되먹임 기억: 직전 틱 은닉 노드 값을 입력으로 다시 쓴다 (옵션)
   neat?: boolean;     // 뇌 구조 변이(NEAT식): 연결·노드 추가/제거 (옵션)
 }
@@ -40,7 +41,7 @@ export type ConfigOverride = Partial<Omit<Config, 'features'>> & { features?: Pa
 export function defaultConfig(over: ConfigOverride = {}): Config {
   const c: Config = {
     w: 128, h: 96, seed: 1, initPop: 400,
-    features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true },
+    features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true, splitAttack: true },
     pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55,
     senescence: 0, corpseDecay: 0.01, plantTempOpt: [18, 8, 28], plantTempWidth: 14,
     plantMin: 0.5, corpseMin: 1.0, offProfile: 0.4,
