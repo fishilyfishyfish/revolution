@@ -230,6 +230,14 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
     <div class="tab" id="tab-log"><div id="logList" class="note">개입 없음</div></div>
   </section>
 </div>
+<script nomodule>
+  // 모듈 스크립트를 지원하지 않는 옛 브라우저(Internet Explorer 등)에서는 시뮬레이터가 시작되지 않는다. 이유를 알려 준다.
+  document.write('<div style="position:fixed;inset:0;z-index:999;background:#14171c;color:#fff;padding:32px;font:16px/1.7 sans-serif">'
+    + '<h2 style="margin-top:0">이 브라우저에서는 실행할 수 없어요</h2>'
+    + '<p>진화 시뮬레이터는 최신 웹 기술이 필요해서 Internet Explorer 같은 옛 브라우저에서는 동작하지 않아요.</p>'
+    + '<p><b>Chrome, Microsoft Edge(최신), Firefox, Safari</b> 중 하나의 최신 버전으로 열어 주세요.</p>'
+    + '<p style="color:#9aa">현재 브라우저: ' + navigator.userAgent + '</p></div>');
+</script>
 <script type="module" src="/src/main.ts"></script>
 </body>
 </html>
