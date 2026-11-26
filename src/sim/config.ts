@@ -49,11 +49,11 @@ export function defaultConfig(over: ConfigOverride = {}): Config {
     cBasal: 0.07, cMove: 0.15, cVision: 0.0002, cTherm: 0.0006, cBrain: 0.015, cBrainW: 0.01, cBrainStruct: 0.03,
     cRes: 0.5, cRepair: 0.3, cAct: 0.02, cAttack: 0.5, cAttempt: 1.0, cSignal: 0.01,
     speedMul: [1, 0.5, 0.15], costMul: [1, 3, 10],
-    infDuration: 150, infImmune: 100, infMetaMul: 1.5, contactR: 1.6, infBeta: 0.25,
+    infDuration: 100, infImmune: 100, infMetaMul: 1.0, contactR: 1.6, infBeta: 0.25,
     pathogenDecay: 0.97, pathogenDose: 0.2,
     dmax: 0.5, dcluster: 0.3, speciesInterval: 100, statInterval: 25,
     maxPop: 6000, devastTicks: 800, matureAge: 40, genTerrain: true, waterLevel: 0.2, restartOnExtinction: true, founders: null,
-    refuge: 0, lifeSizeExp: 0, juvenileFrac: 0.5, growTicks: 100, endemicRate: 0.0002, seedK: 0.12, seedBg: 0.01, cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.005, waterHazard: 0.005,
+    refuge: 0, lifeSizeExp: 0, juvenileFrac: 0.5, growTicks: 100, endemicRate: 0.0001, seedK: 0.12, seedBg: 0.01, cSense: 0.0004, toxinK: 0.8, cLong: 0.4, ageHazard: 0.02, tempTol: 18, tempHazard: 0.004, landHazard: 0.005, waterHazard: 0.005,
   };
   return { ...c, ...over, features: { ...c.features, ...(over.features ?? {}) } };
 }
