@@ -525,7 +525,7 @@ export class World {
       if (F.brain) {
         this.sense(ind, this.inp, true);
         brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
-        if (F.memory) for (let j = 0; j < NH; j++) ind.mem[j] = this.hid[j]; // 이번 은닉 값을 다음 틱을 위해 기억
+        if (F.memory) { const lk = cfg.memLeak; for (let j = 0; j < NH; j++) ind.mem[j] += lk * (this.hid[j] - ind.mem[j]); } // 천천히 변하는 기억: 새 값 memLeak, 이전 기억 1−memLeak
         const o = this.out;
         ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6];
       } else { // 귀무 모형: 순수 난수 출력
