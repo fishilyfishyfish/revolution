@@ -150,8 +150,8 @@ export class World {
         this.zone[i] = Math.min(2, Math.floor(lat * 3));
       } else { this.dom[i] = 0; this.zone[i] = 1; }
       this.soil[i] = cfg.soilInit;
-      if (t === T_PLAIN) this.plants[this.dom[i]][i] = cfg.pMax * 0.4;
-      else if (t === T_WATER) this.plants[2][i] = cfg.pMax * 0.4; // 수초
+      if (t === T_PLAIN) this.plants[this.dom[i]][i] = cfg.pMax * cfg.initPlant;
+      else if (t === T_WATER) this.plants[2][i] = cfg.pMax * cfg.initPlant; // 수초
     }
   }
 
@@ -163,7 +163,7 @@ export class World {
     for (let i = 0; i < this.n; i++) if (this.terrain[i] === T_PLAIN) plain.push(i);
     let waterCells: number[] = [];
     for (let i = 0; i < this.n; i++) if (this.terrain[i] === T_WATER) waterCells.push(i);
-    if (founder && preset === 'herb') { // 기본 창시 집단은 식물 A 우세·온난 지역에서 시작 (창시자 효과)
+    if (founder && preset === 'herb' && cfg.founderHome) { // 기본 창시 집단은 식물 A 우세·온난 지역에서 시작 (창시자 효과)
       const home = plain.filter((i) => this.dom[i] === 0 && this.zone[i] === 1);
       if (home.length >= 100) plain = home;
     }
@@ -181,7 +181,7 @@ export class World {
       const c = pool[rng.int(pool.length)];
       ind.x = (c % this.w) + rng.next() * 0.999; ind.y = Math.floor(c / this.w) + rng.next() * 0.999;
       ind.a = rng.next() * TAU;
-      ind.structE = ind.t.structE; ind.reserve = ind.t.maxReserve * 0.7;
+      ind.structE = ind.t.structE; ind.reserve = ind.t.maxReserve * cfg.initReserve;
       const e = ind.structE + ind.reserve;
       if (need + e > stock * 0.6) break; // 식물 재고의 60%까지만 사용
       need += e; created.push(ind);
