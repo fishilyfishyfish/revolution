@@ -72,7 +72,7 @@ describe('유전/뇌', () => {
     expect(genomeDistance(a, d)).toBeGreaterThan(0);
   });
   it('뇌: 고정 구조 입력 15/은닉 8/출력 5, 가중치는 게놈 안에', () => {
-    expect([NIN, NH, NOUT]).toEqual([19, 8, 7]);
+    expect([NIN, NH, NOUT]).toEqual([21, 8, 7]);
     expect(G).toBe(NT + NB + NM);
     const g = founderGenome(rng, base), hid = new Float64Array(NH), out = new Float64Array(NOUT);
     brainForward(g, new Float64Array(NIN), hid, out);
@@ -224,7 +224,7 @@ describe('현실화: 성장·씨앗·배경 질병', () => {
     expect(sawJuv).toBe(true);
   });
   it('어린 개체는 먹이가 충분하면 성체로 자란다 (저장 에너지 → 구조 에너지 이동)', () => {
-    const w = mk(7, { initPop: 20 });
+    const w = mk(7, { initPop: 20, landHazard: 0, waterHazard: 0, tempHazard: 0, ageHazard: 0, endemicRate: 0, features: { ...STAGES[7], attack: false } });
     const i = w.inds[0]; const adult = i.t.structE;
     w.corpse[(i.y | 0) * w.w + (i.x | 0)] += i.structE - adult * 0.4; // 줄어든 구조 에너지는 사체로 (보존)
     i.structE = adult * 0.4; i.f = 0.4; i.f075 = Math.pow(0.4, 0.75); i.reserve = i.t.maxReserve * 0.4;

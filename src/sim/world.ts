@@ -457,6 +457,10 @@ export class World {
       const gd = genomeDistance(ind.genome, o.genome);
       inp[9] = Math.max(0, 1 - gd / cfg.dmax);
       inp[16] = o.t.claw * 2 - 1;
+      // 움직임: 상대의 속도(0~1)와 나에게 다가오는 정도(−1 멀어짐 ~ +1 접근)
+      const dd = Math.sqrt(bd2) || 1e-9;
+      inp[19] = o.t.vmax > 0 ? o.v / o.t.vmax : 0;
+      inp[20] = o.t.vmax > 0 ? Math.max(-1, Math.min(1, ((-dx / dd) * Math.cos(o.a) + (-dy / dd) * Math.sin(o.a)) * (o.v / o.t.vmax))) : 0;
     }
     const c0 = this.cellOf(ind.x, ind.y);
     inp[10] = ind.reserve / (t.maxReserve * ind.f);
