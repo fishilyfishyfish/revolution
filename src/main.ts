@@ -1,4 +1,4 @@
-import { SimClient } from './ui/client';
+import { SimClient, showError } from './ui/client';
 import { MapView, speciesColor, ViewOpts } from './ui/mapview';
 import { barChart, histChart, lineChart, stackedArea, Marker } from './ui/charts';
 import { drawTree, SpRec } from './ui/tree';
@@ -8,11 +8,13 @@ import { STAT_TRAITS, MIN_SPECIES } from './sim/analysis';
 import { PRESETS } from './sim/genome';
 import { COST_NAMES } from './sim/world';
 import { CAUSE_NAMES } from './sim/lineage';
-import { snapshotFromJSON, snapshotToJSON } from './sim/snapshot';
+import { snapshotFromJSON, snapshotToJSON, validateSnapshot } from './sim/snapshot';
 import type { Intervention } from './sim/world';
 import type { FrameMsg, FromWorker, InspectData, SnapMeta, SpInfo, StatsMsg } from './worker/protocol';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+window.addEventListener('error', (e) => showError(e.message || '알 수 없는 오류'));
+window.addEventListener('unhandledrejection', (e) => showError(String((e.reason && e.reason.message) || e.reason)));
 const client = new SimClient();
 const mv = new MapView($('map') as HTMLCanvasElement);
 
@@ -40,6 +42,7 @@ client.onMsg = (m: FromWorker) => {
   } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length && !snapToastShown) { snapToastShown = true; toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); } snapMetas = m.list; renderSnaps(); }
   else if (m.t === 'inspect') { insp = m.data; renderInspect(); }
   else if (m.t === 'ancestry') renderAncestry(m);
+  else if (m.t === 'error') { fileMsg(m.msg); alert(m.msg); }
   else if (m.t === 'snap') {
     if (m.purpose === 'save') {
       const blob = new Blob([snapshotToJSON(m.snap)], { type: 'application/json' });
@@ -83,9 +86,17 @@ function newWorld() {
 $('reset').onclick = newWorld;
 $('save').onclick = () => client.send({ t: 'getSnap', id: 0, purpose: 'save' });
 $('load').onclick = () => $('file').click();
+function fileMsg(text: string, bad = true) { const el = $('fileMsg'); el.textContent = text; el.style.color = bad ? 'var(--danger)' : 'var(--muted)'; }
 ($('file') as HTMLInputElement).onchange = async (e) => {
-  const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
-  const snap = snapshotFromJSON(await f.text()); client.send({ t: 'load', snap }); ($('file') as HTMLInputElement).value = '';
+  const input = e.target as HTMLInputElement; const f = input.files?.[0]; if (!f) return;
+  try {
+    fileMsg(`"${f.name}" 읽는 중…`, false);
+    const snap = snapshotFromJSON(await f.text());
+    const err = validateSnapshot(snap);
+    if (err) { fileMsg(err); alert(err); return; }
+    client.send({ t: 'load', snap }); fileMsg(`불러왔어요: ${f.name} (틱 ${snap.tick})`, false);
+  } catch (err) { const msg = `파일을 읽지 못했어요: ${(err as Error).message}`; fileMsg(msg); alert(msg); }
+  finally { input.value = ''; } // 같은 파일을 다시 골라도 동작하도록 초기화
 };
 document.addEventListener('keydown', (e) => { if (e.code === 'Space' && (e.target as HTMLElement).tagName !== 'INPUT') { e.preventDefault(); $('play').click(); } });
 

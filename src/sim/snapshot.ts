@@ -1,11 +1,12 @@
 import { Config } from './config';
-import { G, Traits } from './genome';
+import { G, NH, NIN, NOUT, NT, Traits } from './genome';
 import { Lineage } from './lineage';
 import { Ind, World, SpeciesRec } from './world';
 
 // 구조화 복제 가능한 스냅샷 (타입드 배열 포함). 파일 저장 시 JSON 변환 함수 사용.
 export interface Snapshot {
   version: 1;
+  layout?: { G: number; NT: number; NIN: number; NH: number; NOUT: number }; // 게놈/뇌 구조 (호환성 검사용)
   cfg: Config; tick: number; rng: number[];
   terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; sunMul: Float32Array; devast: Uint16Array; pathogen: Float32Array;
   plants: Float64Array[]; soil: Float64Array; corpse: Float64Array;
@@ -30,7 +31,7 @@ export function serialize(w: World): Snapshot {
   });
   const packSp = (a: SpeciesRec[]) => a.map((s) => ({ ...s, centroid: s.centroid ? s.centroid.slice() : null }));
   return {
-    version: 1, cfg: structuredClone(w.cfg), tick: w.tick, rng: w.rng.getState(),
+    version: 1, layout: { G, NT, NIN, NH, NOUT }, cfg: structuredClone(w.cfg), tick: w.tick, rng: w.rng.getState(),
     terrain: w.terrain.slice(), dom: w.dom.slice(), zone: w.zone.slice(), sunMul: w.sunMul.slice(),
     devast: w.devast.slice(), pathogen: w.pathogen.slice(),
     plants: w.plants.map((p) => p.slice()), soil: w.soil.slice(), corpse: w.corpse.slice(),
@@ -43,6 +44,20 @@ export function serialize(w: World): Snapshot {
     spHist: w.spHist.map(([t, a]) => [t, a.slice()] as [number, number[]]),
     hists: structuredClone(w.hists), dead: w.dead,
   };
+}
+
+// 저장 파일이 이 버전과 호환되는지 검사한다. 호환되지 않으면 이유를 돌려준다 (null이면 정상).
+export function validateSnapshot(s: any): string | null {
+  if (!s || typeof s !== 'object' || s.version !== 1 || !s.cfg || !s.indGenome || !s.lineage) return '이 시뮬레이터가 저장한 파일이 아니에요.';
+  const L = s.layout;
+  if (L) {
+    if (L.G !== G || L.NIN !== NIN || L.NH !== NH || L.NOUT !== NOUT || L.NT !== NT)
+      return `다른 버전에서 저장한 파일이에요. 게놈·뇌 구조가 달라서 불러올 수 없어요 (파일 ${L.G} / 현재 ${G}).`;
+  } else if (s.nInd > 0 && s.indGenome.length !== s.nInd * G) {
+    return `옛 버전에서 저장한 파일이에요. 그 뒤로 형질과 뇌 구조가 늘어나서 불러올 수 없어요 (게놈 길이 ${Math.round(s.indGenome.length / s.nInd)} / 현재 ${G}).`;
+  }
+  if (!s.terrain || s.terrain.length !== s.cfg.w * s.cfg.h) return '저장 파일의 지도 크기가 맞지 않아요.';
+  return null;
 }
 
 export function deserialize(s: Snapshot): World {

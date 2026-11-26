@@ -2,7 +2,7 @@
 import { STAGES, defaultConfig } from '../sim/config';
 import { World, Intervention, NPLANT } from '../sim/world';
 import { stepSim } from '../sim/runner';
-import { deserialize, serialize, Snapshot } from '../sim/snapshot';
+import { deserialize, serialize, Snapshot, validateSnapshot } from '../sim/snapshot';
 import { ancestryOf } from '../sim/analysis';
 import { BO, GENE, MO, NB, NM, TRAIT_NAMES } from '../sim/genome';
 import type { FromWorker, InspectData, SnapMeta, ToWorker } from './protocol';
@@ -143,7 +143,13 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
       snaps.length = 0; lastAutoSnapTick = -1e9;
       attach(World.create(cfg)); post({ t: 'snaps', list: [] }); frame(); stats(); break;
     }
-    case 'load': snaps.length = 0; attach(deserialize(m.snap)); post({ t: 'snaps', list: [] }); frame(); stats(); break;
+    case 'load': {
+      const err = validateSnapshot(m.snap);
+      if (err) { post({ t: 'error', msg: err }); break; }
+      try { const w = deserialize(m.snap); snaps.length = 0; attach(w); post({ t: 'snaps', list: [] }); frame(); stats(); }
+      catch (e) { post({ t: 'error', msg: `불러오기에 실패했어요: ${(e as Error).message}` }); }
+      break;
+    }
     case 'run': running = m.running; break;
     case 'speed': mult = m.mult; maxSpeed = m.max; renderOn = m.render; break;
     case 'step': if (world) { for (let i = 0; i < m.n; i++) stepSim(world); frame(); stats(); } break;

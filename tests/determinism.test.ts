@@ -57,3 +57,17 @@ describe('재현성', () => {
     expect(withIv.cnt.meteor).toBeGreaterThan(0);
   });
 });
+
+import { validateSnapshot } from '../src/sim/snapshot';
+import { G } from '../src/sim/genome';
+describe('저장 파일 호환성 검사', () => {
+  const base = () => serialize(mk(11));
+  it('새로 저장한 파일은 통과', () => { expect(validateSnapshot(snapshotFromJSON(snapshotToJSON(base())))).toBeNull(); });
+  it('게놈 구조가 다른(옛) 파일은 이유와 함께 거부', () => {
+    const s: any = base(); delete s.layout; s.indGenome = new Float32Array(s.nInd * (G - 40));
+    expect(validateSnapshot(s)).toMatch(/옛 버전/);
+    const t: any = base(); t.layout = { ...t.layout, G: G - 1 };
+    expect(validateSnapshot(t)).toMatch(/다른 버전/);
+  });
+  it('시뮬레이터 파일이 아니면 거부', () => { expect(validateSnapshot({ hello: 1 })).toMatch(/저장한 파일이 아니/); expect(validateSnapshot(null)).not.toBeNull(); });
+});

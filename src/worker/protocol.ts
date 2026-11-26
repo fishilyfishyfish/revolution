@@ -41,6 +41,7 @@ export type FromWorker =
   | FrameMsg | StatsMsg
   | { t: 'snaps'; list: SnapMeta[] }
   | { t: 'snap'; id: number; purpose: string; snap: Snapshot; iv: Intervention | null }
+  | { t: 'error'; msg: string }
   | { t: 'ancestry'; data: import('../sim/analysis').Ancestry; restarts: number[]; tick: number }
   | { t: 'inspect'; data: InspectData | null };
 
