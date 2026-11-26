@@ -108,6 +108,9 @@ export class Traits {
   }
 }
 
+// 창시 집단의 형질 시작값 (유전자 순서대로). 옛 저장 파일 변환 때 새 형질의 기본값으로도 쓴다.
+export const FOUNDER_MID = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1, 0.5];
+
 export function founderBrain(rng: Rng): Float32Array {
   const b = new Float32Array(NB);
   for (let i = 0; i < NB; i++) b[i] = rng.gauss() * 0.8;
@@ -116,7 +119,7 @@ export function founderBrain(rng: Rng): Float32Array {
 
 // 창시 집단: 형질은 같은 중심값 주변의 좁은 변이, 뇌는 공통 원형 + 개체별 변이(σ=0.4)
 export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Array(G), neat = false): Float32Array {
-  const mid = [0.4, 0.5, 0.5, 0.5, 0.5, 0.2, 0.2, 0.05, 0.5, 0.2, 0.5, 0.4, 0.3, 0.4, 0, 0.5, 0.05, 0.5, 0.04, 0.04, 0.0, 0.1, 0.1, 0.1, 0.05, 0.0, 0.15, 0.1, 0.5];
+  const mid = FOUNDER_MID;
   for (let i = 0; i < NT; i++) out[i] = c01(mid[i] + rng.gauss() * 0.05);
   out[GENE.HUE] = rng.next();
   out[GENE.IMM] = rng.next(); // 면역형은 창시 집단에서도 다양하다

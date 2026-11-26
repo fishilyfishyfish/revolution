@@ -8,7 +8,8 @@ import { STAT_TRAITS, MIN_SPECIES } from './sim/analysis';
 import { PRESETS } from './sim/genome';
 import { COST_NAMES } from './sim/world';
 import { CAUSE_NAMES } from './sim/lineage';
-import { snapshotFromJSON, snapshotToJSON, validateSnapshot } from './sim/snapshot';
+import { snapshotFromJSON, snapshotToJSON } from './sim/snapshot';
+import { prepareSnapshot } from './sim/migrate';
 import type { Intervention } from './sim/world';
 import type { FrameMsg, FromWorker, InspectData, SnapMeta, SpInfo, StatsMsg } from './worker/protocol';
 
@@ -91,10 +92,9 @@ function fileMsg(text: string, bad = true) { const el = $('fileMsg'); el.textCon
   const input = e.target as HTMLInputElement; const f = input.files?.[0]; if (!f) return;
   try {
     fileMsg(`"${f.name}" 읽는 중…`, false);
-    const snap = snapshotFromJSON(await f.text());
-    const err = validateSnapshot(snap);
-    if (err) { fileMsg(err); alert(err); return; }
-    client.send({ t: 'load', snap }); fileMsg(`불러왔어요: ${f.name} (틱 ${snap.tick})`, false);
+    const prep = prepareSnapshot(snapshotFromJSON(await f.text()));
+    if (prep.error || !prep.snap) { fileMsg(prep.error ?? '알 수 없는 오류'); alert(prep.error); return; }
+    client.send({ t: 'load', snap: prep.snap }); fileMsg(`불러왔어요: ${f.name} (틱 ${prep.snap.tick})${prep.note ? ' · ' + prep.note : ''}`, false);
   } catch (err) { const msg = `파일을 읽지 못했어요: ${(err as Error).message}`; fileMsg(msg); alert(msg); }
   finally { input.value = ''; } // 같은 파일을 다시 골라도 동작하도록 초기화
 };
