@@ -240,19 +240,15 @@ function renderLegend() {
   let html = `<div class="lh" role="button" tabindex="0">${legendOpen ? '▾' : '▸'} <b>${title}</b>${speciesMode ? ` · ${rows.length}종 (${rows.length - rows.filter((r) => hidden.has(r.id)).length}개 표시) ${dots}` : ''}</div>`;
   if (legendOpen) {
     if (speciesMode) {
-      html += `<div class="lt"><span class="lbtn" data-act="all">모두 표시</span><span class="lbtn" data-act="none">모두 숨김</span><label class="lbtn"><input type="checkbox" data-act="heat" ${showHeat ? 'checked' : ''}/> 분포 보기</label> · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>`;
-      html += rows.length ? rows.map((r) => { const d = describeSp(r); const off = hidden.has(r.id); return `<div class="lr${off ? ' off' : ''}" data-id="${r.id}" title="눌러서 보이기/숨기기"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리 · ${off ? '숨김' : '표시'}</span></span><span class="lbtn solo" data-solo="${r.id}" title="이 종만 보기">🎯</span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>';
+      html += `<div class="lt"><span class="swrap" data-act="heat" title="종별 밀도를 지도 위에 색으로 표시"><span class="sw${showHeat ? ' on' : ''}"></span> 분포 보기</span> · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생 · 스위치로 종 켜기/끄기</div>`;
+      html += rows.length ? rows.map((r) => { const d = describeSp(r); const off = hidden.has(r.id); return `<div class="lr${off ? ' off' : ''}" data-id="${r.id}"><span class="sw${off ? '' : ' on'}"></span><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리</span></span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>';
     } else html += `<div class="lt">${mode === 'hue' ? '종을 보려면 🌍 표시 → 개체 색을 "종"으로' : '빨강 낮음 → 초록 높음'}</div>`;
   }
   el.innerHTML = html;
   const head = el.querySelector<HTMLElement>('.lh')!;
   head.onclick = () => { legendOpen = !legendOpen; try { localStorage.setItem('evo-legend', legendOpen ? '1' : '0'); } catch { /* 무시 */ } renderLegend(); };
   el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; if (hidden.has(id)) hidden.delete(id); else hidden.add(id); renderLegend(); dirty = true; });
-  el.querySelectorAll<HTMLElement>('[data-solo]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = +b.dataset.solo!; hidden.clear(); for (const r of rows) if (r.id !== id) hidden.add(r.id); renderLegend(); dirty = true; });
-  el.querySelectorAll<HTMLElement>('[data-act]').forEach((b) => b.onclick = (e) => {
-    const act = b.dataset.act; if (act === 'heat') { showHeat = (b as HTMLInputElement).checked; dirty = true; return; }
-    e.stopPropagation(); hidden.clear(); if (act === 'none') for (const r of rows) hidden.add(r.id); renderLegend(); dirty = true;
-  });
+  el.querySelectorAll<HTMLElement>('[data-act=heat]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); showHeat = !showHeat; renderLegend(); dirty = true; });
 }
 function renderAncestry(m: Extract<FromWorker, { t: 'ancestry' }>) {
   const a = m.data, el = $('ancestry');
