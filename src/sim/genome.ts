@@ -47,7 +47,7 @@ export class Traits {
     this.ang = 0.35 + (TAU - 0.35) * c01(g[GENE.ANG]);
     let s = 0;
     for (let i = 0; i < 4; i++) { const v = Math.max(0.001, g[GENE.D0 + i]); this.diet[i] = v; s += v; }
-    for (let i = 0; i < 4; i++) { this.diet[i] /= s; this.eff[i] = this.diet[i] * cfg.effMax; } // 합 고정 → 트레이드오프
+    for (let i = 0; i < 4; i++) { this.diet[i] /= s; this.eff[i] = this.diet[i] * (i < 3 ? cfg.effPlant : cfg.effMax); } // 식물(i<3)과 고기(i=3)의 최대 소화 효율을 따로 둔다 // 합 고정 → 트레이드오프
     this.tOpt = -5 + 40 * c01(g[GENE.TOPT]);
     this.res = c01(g[GENE.RES]);
     this.thr = 0.3 + 0.65 * c01(g[GENE.THR]);
