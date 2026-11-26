@@ -684,7 +684,9 @@ export class World {
         }
       }
       if (victim) {
-        const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1); // 갑옷, 웅크림이 피해를 줄인다
+        // 갑옷·웅크림·몸집 차이(자기보다 큰 상대는 물기 어렵다)가 피해를 줄인다
+        const refugeMul = cfg.refuge > 0 ? Math.max(1, Math.pow((victim.t.mass * victim.f) / (t.mass * ind.f), cfg.refuge)) : 1;
+        const shield = (1 + 2 * victim.t.armor) * (victim.oGuard > 0 ? 2 : 1) * refugeMul;
         const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, (t.attackPow * ind.f * ind.oBite) / shield);
         victim.reserve -= dmg;
         victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / (victim.t.maxReserve * victim.f));

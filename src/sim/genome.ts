@@ -66,7 +66,7 @@ export class Traits {
     for (let i = 0; i < NB; i++) wa += Math.abs(g[BO + i]);
     wa /= NB;
     const lg = c01(g[GENE.LONG]);
-    this.lifespan = 400 + 2600 * lg; // 이 나이를 넘기면 노화 사망 위험이 생긴다. 길수록 유지비↑
+    this.lifespan = (400 + 2600 * lg) * Math.pow(this.size / 1.5, cfg.lifeSizeExp); // 이 나이를 넘기면 노화 사망 위험이 생긴다. 길수록 유지비↑
     // ── 방어·감각·체온·번식 세부 형질: 전부 이득과 비용이 같이 있다 ──
     this.armor = c01(g[GENE.ARMOR]);   // 이득: 받는 피해 1/(1+2a) / 비용: 기초대사 +50%·a, 이동 질량 +60%·a
     this.claw = c01(g[GENE.CLAW]);     // 이득: 공격력 ×(1+1.5c) / 비용: 기초대사 +30%·c
