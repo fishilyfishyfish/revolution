@@ -212,7 +212,8 @@ function openBranch(snap: any, iv: Intervention | null) {
 $('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').classList.remove('open'); };
 
 // ── 지도 범례: 색 → 종 (특징 요약, 눌러서 강조) ──
-let hlSpecies = -1;
+const hidden = new Set<number>(); // 숨긴 종 id
+let showHeat = false;
 const mobileMq = window.matchMedia('(max-width: 800px)');
 let legendOpen = (() => { try { const v = localStorage.getItem('evo-legend'); if (v !== null) return v === '1'; } catch { /* 무시 */ } return !mobileMq.matches; })();
 function describeSp(r: SpInfo): { icon: string; shape: string; text: string; aqua: boolean } {
@@ -233,20 +234,25 @@ function renderLegend() {
   el.hidden = false;
   const rows = mode === 'speciesA' ? st.spInfo.A : mode === 'speciesB' ? st.spInfo.B : [];
   const speciesMode = mode === 'speciesA' || mode === 'speciesB';
-  if (hlSpecies >= 0 && !rows.some((r) => r.id === hlSpecies)) hlSpecies = -1;
+  for (const id of [...hidden]) if (!rows.some((r) => r.id === id)) hidden.delete(id);
   const title = mode === 'speciesA' ? '종 범례 (게놈 거리 클러스터)' : mode === 'speciesB' ? '종 범례 (교배 가능 집단)' : mode === 'hue' ? '색 = 색 유전자 (중립)' : '색 = 에너지';
   const dots = speciesMode ? rows.map((r) => `<span style="color:${speciesColor(r.id)}">●</span>`).join('') : '';
-  let html = `<div class="lh" role="button" tabindex="0">${legendOpen ? '▾' : '▸'} <b>${title}</b>${speciesMode ? ` · ${rows.length}종 ${dots}` : ''}</div>`;
+  let html = `<div class="lh" role="button" tabindex="0">${legendOpen ? '▾' : '▸'} <b>${title}</b>${speciesMode ? ` · ${rows.length}종 (${rows.length - rows.filter((r) => hidden.has(r.id)).length}개 표시) ${dots}` : ''}</div>`;
   if (legendOpen) {
     if (speciesMode) {
-      html += '<div class="lt">눌러서 강조 · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>';
-      html += rows.length ? rows.map((r) => { const d = describeSp(r); return `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리</span></span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>';
+      html += `<div class="lt"><span class="lbtn" data-act="all">모두 표시</span><span class="lbtn" data-act="none">모두 숨김</span><label class="lbtn"><input type="checkbox" data-act="heat" ${showHeat ? 'checked' : ''}/> 분포 보기</label> · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>`;
+      html += rows.length ? rows.map((r) => { const d = describeSp(r); const off = hidden.has(r.id); return `<div class="lr${off ? ' off' : ''}" data-id="${r.id}" title="눌러서 보이기/숨기기"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리 · ${off ? '숨김' : '표시'}</span></span><span class="lbtn solo" data-solo="${r.id}" title="이 종만 보기">🎯</span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>';
     } else html += `<div class="lt">${mode === 'hue' ? '종을 보려면 🌍 표시 → 개체 색을 "종"으로' : '빨강 낮음 → 초록 높음'}</div>`;
   }
   el.innerHTML = html;
   const head = el.querySelector<HTMLElement>('.lh')!;
   head.onclick = () => { legendOpen = !legendOpen; try { localStorage.setItem('evo-legend', legendOpen ? '1' : '0'); } catch { /* 무시 */ } renderLegend(); };
-  el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; hlSpecies = hlSpecies === id ? -1 : id; renderLegend(); dirty = true; });
+  el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; if (hidden.has(id)) hidden.delete(id); else hidden.add(id); renderLegend(); dirty = true; });
+  el.querySelectorAll<HTMLElement>('[data-solo]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); const id = +b.dataset.solo!; hidden.clear(); for (const r of rows) if (r.id !== id) hidden.add(r.id); renderLegend(); dirty = true; });
+  el.querySelectorAll<HTMLElement>('[data-act]').forEach((b) => b.onclick = (e) => {
+    const act = b.dataset.act; if (act === 'heat') { showHeat = (b as HTMLInputElement).checked; dirty = true; return; }
+    e.stopPropagation(); hidden.clear(); if (act === 'none') for (const r of rows) hidden.add(r.id); renderLegend(); dirty = true;
+  });
 }
 function renderAncestry(m: Extract<FromWorker, { t: 'ancestry' }>) {
   const a = m.data, el = $('ancestry');
@@ -348,7 +354,7 @@ function frameLoop() {
   const c = canvas, r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   if (Math.abs(c.width - r.width * dpr) > 2) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); dirty = true; }
   if (dirty && lastFrame) {
-    const o: ViewOpts = { bg: ($('vbg') as HTMLSelectElement).value as any, ind: ($('vind') as HTMLSelectElement).value as any, showInd: ($('vshow') as HTMLInputElement).checked, selected, hl: hlSpecies,
+    const o: ViewOpts = { bg: ($('vbg') as HTMLSelectElement).value as any, ind: ($('vind') as HTMLSelectElement).value as any, showInd: ($('vshow') as HTMLInputElement).checked, selected, hidden, heat: showHeat,
       brush: hoverPos && tool !== 'inspect' ? { ...hoverPos, r: brushR() } : null };
     if (($('render') as HTMLInputElement).checked) mv.draw(o); dirty = false;
   }
@@ -356,7 +362,7 @@ function frameLoop() {
   requestAnimationFrame(frameLoop);
 }
 setInterval(() => { chartsDirty = true; }, 700);
-['vbg', 'vind', 'vshow'].forEach((id) => { $(id).onchange = () => { dirty = true; if (id === 'vind') { hlSpecies = -1; renderLegend(); } }; });
+['vbg', 'vind', 'vshow'].forEach((id) => { $(id).onchange = () => { dirty = true; if (id === 'vind') { hidden.clear(); renderLegend(); } }; });
 window.addEventListener('resize', () => { dirty = true; chartsDirty = true; });
 renderSnaps();
 newWorld();

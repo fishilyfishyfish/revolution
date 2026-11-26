@@ -70,11 +70,14 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
 #brushrow { display:flex; align-items:center; gap:4px; padding:4px 8px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); }
 #brushrow input { width:80px; border:0; background:none; }
 #hud { position:absolute; right:8px; top:8px; z-index:5; padding:5px 10px; border-radius:10px; background:color-mix(in srgb, var(--panel) 72%, transparent); backdrop-filter:blur(8px); border:1px solid var(--line); font-size:12px; font-variant-numeric:tabular-nums; pointer-events:none; }
-#legend { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:stretch; max-height:96px; overflow:auto; padding:4px; border-radius:8px; background:var(--panel); border:1px solid var(--line); font-size:12px; }
+#legend { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:stretch; max-height:150px; overflow:auto; padding:4px; border-radius:8px; background:var(--panel); border:1px solid var(--line); font-size:12px; }
 #legend[hidden] { display:none; }
 #legend .lh { flex:1 0 100%; cursor:pointer; padding:2px 4px; user-select:none; }
 #legend .lt { flex:1 0 100%; color:var(--muted); font-size:11px; padding:0 4px; }
 #legend .lr { display:flex; align-items:center; gap:6px; padding:3px 8px; border-radius:8px; cursor:pointer; line-height:1.25; background:var(--panel2); border:1px solid transparent; }
+#legend .lr.off { opacity:.45; } #legend .lr.off b { text-decoration:line-through; }
+#legend .lbtn { display:inline-block; padding:1px 8px; margin-right:6px; border-radius:10px; background:var(--panel2); border:1px solid var(--line); cursor:pointer; color:var(--fg); }
+#legend .lbtn:hover { border-color:var(--accent); } #legend .lbtn.solo { margin:0 0 0 4px; padding:1px 5px; }
 #legend .lr:hover { border-color:var(--muted); } #legend .lr.on { border-color:var(--accent); outline:1px solid var(--accent); }
 #legend .lc { flex:0 0 auto; font-size:17px; line-height:1; } #legend .lc.aq { text-shadow:0 0 0 #7fd4ff; border:1.5px solid #7fd4ff; border-radius:50%; padding:1px 3px; }
 #hint { position:absolute; left:50%; bottom:8px; transform:translateX(-50%); z-index:5; padding:4px 12px; border-radius:14px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; pointer-events:none; white-space:nowrap; }

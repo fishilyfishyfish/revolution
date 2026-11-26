@@ -2,7 +2,7 @@ import type { FrameMsg } from '../worker/protocol';
 
 export type ViewBg = 'plants' | 'biome' | 'temp' | 'sun';
 export type ViewInd = 'hue' | 'speciesA' | 'speciesB' | 'energy';
-export interface ViewOpts { bg: ViewBg; ind: ViewInd; showInd: boolean; selected: number; hl?: number; brush: { x: number; y: number; r: number } | null }
+export interface ViewOpts { bg: ViewBg; ind: ViewInd; showInd: boolean; selected: number; hidden?: Set<number>; heat?: boolean; brush: { x: number; y: number; r: number } | null }
 export interface Maps { terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; sun: Float32Array; devast: Uint16Array }
 
 const PC = [[70, 200, 90], [225, 175, 60], [90, 170, 230]];
@@ -15,6 +15,7 @@ export class MapView {
   ctx: CanvasRenderingContext2D;
   off = document.createElement('canvas');
   img: ImageData | null = null;
+  heatCv = document.createElement('canvas');
   maps: Maps | null = null;
   frame: FrameMsg | null = null;
   constructor(public canvas: HTMLCanvasElement) { this.ctx = canvas.getContext('2d')!; }
@@ -52,12 +53,13 @@ export class MapView {
     const ctx = this.ctx, cw = this.canvas.width, ch = this.canvas.height, sc = cw / w;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.off, 0, 0, cw, ch);
+    if (o.heat && (o.ind === 'speciesA' || o.ind === 'speciesB')) this.drawHeat(o, w, h, cw, ch);
     if (o.showInd) {
       const a = f.ind; const n = a.length / 11;
       for (let i = 0; i < n; i++) {
         const k = i * 11, x = a[k] * sc, y = a[k + 1] * sc, ang = a[k + 2], rad = Math.max(1.6, a[k + 3] * sc * 0.9);
         const sid = o.ind === 'speciesA' ? a[k + 5] : o.ind === 'speciesB' ? a[k + 6] : -2;
-        ctx.globalAlpha = o.hl !== undefined && o.hl >= 0 && sid !== o.hl ? 0.18 : 1; // 범례에서 고른 종만 강조
+        if (sid >= -1 && o.hidden && o.hidden.has(sid)) continue; // 숨긴 종은 그리지 않는다
         ctx.fillStyle = o.ind === 'hue' ? hsl(a[k + 4], 80, 55) : o.ind === 'speciesA' ? speciesColor(a[k + 5]) : o.ind === 'speciesB' ? speciesColor(a[k + 6])
           : `hsl(${Math.round(a[k + 9] * 120)},80%,50%)`;
         const cls = a[k + 10] % 10, aqua = a[k + 10] >= 10;
@@ -82,6 +84,34 @@ export class MapView {
     }
   }
 
+  // 종별 분포 밀도: 개체마다 3×3 커널로 퍼뜨리고, 셀마다 가장 많은 종의 색으로 칠한다 (숨긴 종 제외)
+  private drawHeat(o: ViewOpts, w: number, h: number, cw: number, ch: number) {
+    const f = this.frame!, a = f.ind, n = a.length / 11, si = o.ind === 'speciesA' ? 5 : 6;
+    const dens = new Map<number, Float32Array>();
+    for (let i = 0; i < n; i++) {
+      const sid = a[i * 11 + si]; if (o.hidden && o.hidden.has(sid)) continue;
+      let g = dens.get(sid); if (!g) dens.set(sid, (g = new Float32Array(w * h)));
+      const cx = a[i * 11] | 0, cy = a[i * 11 + 1] | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        g[y * w + x] += dx === 0 && dy === 0 ? 1 : 0.5;
+      }
+    }
+    if (this.heatCv.width !== w) { this.heatCv.width = w; this.heatCv.height = h; }
+    const hc = this.heatCv.getContext('2d')!; const img = hc.createImageData(w, h); const d = img.data;
+    const cols = new Map<number, number[]>();
+    for (const sid of dens.keys()) { const m = /hsl\(([\d.]+),(\d+)%,(\d+)%\)/.exec(speciesColor(sid)); const hh = m ? +m[1] : 0; cols.set(sid, hslToRgb(hh / 360, 0.7, 0.58)); }
+    for (let c = 0; c < w * h; c++) {
+      let best = -2, bv = 0;
+      for (const [sid, g] of dens) if (g[c] > bv) { bv = g[c]; best = sid; }
+      if (best === -2) continue;
+      const col = cols.get(best)!, al = Math.min(0.85, 0.3 + 0.22 * bv);
+      d[c * 4] = col[0]; d[c * 4 + 1] = col[1]; d[c * 4 + 2] = col[2]; d[c * 4 + 3] = al * 255;
+    }
+    hc.putImageData(img, 0, 0);
+    this.ctx.imageSmoothingEnabled = true; this.ctx.drawImage(this.heatCv, 0, 0, cw, ch); this.ctx.imageSmoothingEnabled = false;
+  }
+
   toWorld(ev: MouseEvent): { x: number; y: number } {
     const r = this.canvas.getBoundingClientRect(); const f = this.frame;
     const w = f ? f.w : 128, h = f ? f.h : 96;
@@ -95,4 +125,9 @@ export class MapView {
     }
     return best;
   }
+}
+
+function hslToRgb(h: number, s: number, l: number): number[] {
+  const f = (n: number) => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))); };
+  return [f(0), f(8), f(4)];
 }
