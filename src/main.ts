@@ -212,6 +212,8 @@ $('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').c
 
 // ── 지도 범례: 색 → 종 (특징 요약, 눌러서 강조) ──
 let hlSpecies = -1;
+const mobileMq = window.matchMedia('(max-width: 800px)');
+let legendOpen = (() => { try { const v = localStorage.getItem('evo-legend'); if (v !== null) return v === '1'; } catch { /* 무시 */ } return !mobileMq.matches; })();
 function describeSp(r: SpInfo): { icon: string; shape: string; text: string; aqua: boolean } {
   const names = ['식물A', '식물B', '식물C'];
   let mi = 0; for (let k = 1; k < 3; k++) if (r.diet[k] > r.diet[mi]) mi = k;
@@ -227,13 +229,22 @@ function describeSp(r: SpInfo): { icon: string; shape: string; text: string; aqu
 function renderLegend() {
   const el = $('legend'); const mode = ($('vind') as HTMLSelectElement).value;
   if (!st) { el.hidden = true; return; }
-  if (mode === 'hue') { el.hidden = false; el.innerHTML = '<div class="lt">색 = 색 유전자 (중립 형질, 계통 추적용). 종을 보려면 🌍 표시 → 개체 색을 "종"으로</div>'; return; }
-  if (mode === 'energy') { el.hidden = false; el.innerHTML = '<div class="lt">색 = 에너지 (빨강 낮음 → 초록 높음)</div>'; return; }
-  const rows = mode === 'speciesA' ? st.spInfo.A : st.spInfo.B;
-  if (hlSpecies >= 0 && !rows.some((r) => r.id === hlSpecies)) hlSpecies = -1;
   el.hidden = false;
-  el.innerHTML = `<div class="lt">${mode === 'speciesA' ? '종 (게놈 거리 클러스터)' : '종 (교배 가능 집단)'} · 눌러서 강조 · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>` + (rows.length ? rows.map((r) =>
-    { const d = describeSp(r); return `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리</span></span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>');
+  const rows = mode === 'speciesA' ? st.spInfo.A : mode === 'speciesB' ? st.spInfo.B : [];
+  const speciesMode = mode === 'speciesA' || mode === 'speciesB';
+  if (hlSpecies >= 0 && !rows.some((r) => r.id === hlSpecies)) hlSpecies = -1;
+  const title = mode === 'speciesA' ? '종 범례 (게놈 거리 클러스터)' : mode === 'speciesB' ? '종 범례 (교배 가능 집단)' : mode === 'hue' ? '색 = 색 유전자 (중립)' : '색 = 에너지';
+  const dots = speciesMode ? rows.map((r) => `<span style="color:${speciesColor(r.id)}">●</span>`).join('') : '';
+  let html = `<div class="lh" role="button" tabindex="0">${legendOpen ? '▾' : '▸'} <b>${title}</b>${speciesMode ? ` · ${rows.length}종 ${dots}` : ''}</div>`;
+  if (legendOpen) {
+    if (speciesMode) {
+      html += '<div class="lt">눌러서 강조 · 모양: ●초식 ◆잡식 ▲육식 · 파란 테두리=수생</div>';
+      html += rows.length ? rows.map((r) => { const d = describeSp(r); return `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc${d.aqua ? ' aq' : ''}" style="color:${speciesColor(r.id)}">${d.shape}</span><span><b>${d.text}</b><br><span style="color:var(--muted)">#${r.id} · ${r.count}마리</span></span></div>`; }).join('') : '<div class="lt">표시할 종 없음</div>';
+    } else html += `<div class="lt">${mode === 'hue' ? '종을 보려면 🌍 표시 → 개체 색을 "종"으로' : '빨강 낮음 → 초록 높음'}</div>`;
+  }
+  el.innerHTML = html;
+  const head = el.querySelector<HTMLElement>('.lh')!;
+  head.onclick = () => { legendOpen = !legendOpen; try { localStorage.setItem('evo-legend', legendOpen ? '1' : '0'); } catch { /* 무시 */ } renderLegend(); };
   el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; hlSpecies = hlSpecies === id ? -1 : id; renderLegend(); dirty = true; });
 }
 function updateHud() {
