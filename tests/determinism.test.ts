@@ -71,3 +71,18 @@ describe('저장 파일 호환성 검사', () => {
   });
   it('시뮬레이터 파일이 아니면 거부', () => { expect(validateSnapshot({ hello: 1 })).toMatch(/저장한 파일이 아니/); expect(validateSnapshot(null)).not.toBeNull(); });
 });
+
+describe('저장 뒤에 추가된 설정 항목', () => {
+  it('설정에 없는 항목은 기본값으로 채워져 NaN이 퍼지지 않는다', () => {
+    const w = mk(13); for (let t = 0; t < 100; t++) stepSim(w);
+    const s: any = serialize(w);
+    for (const k of ['effPlant', 'endemicRate', 'refuge', 'lifeSizeExp', 'seedK', 'juvenileFrac']) delete s.cfg[k]; // 옛 저장 파일 흉내
+    const w2 = deserialize(snapshotFromJSON(snapshotToJSON(s)));
+    expect(w2.cfg.effPlant).toBe(defaultConfig().effPlant);
+    for (let t = 0; t < 300; t++) stepSim(w2);
+    let bad = 0;
+    for (let c = 0; c < w2.n; c++) { if (!Number.isFinite(w2.soil[c]) || !Number.isFinite(w2.plants[0][c])) bad++; }
+    for (const i of w2.inds) if (!Number.isFinite(i.reserve) || i.t.eff.some((x) => !Number.isFinite(x))) bad++;
+    expect(bad).toBe(0);
+  });
+});

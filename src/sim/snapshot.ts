@@ -1,4 +1,4 @@
-import { Config } from './config';
+import { Config, defaultConfig } from './config';
 import { G, NH, NIN, NOUT, NT, Traits } from './genome';
 import { Lineage } from './lineage';
 import { Ind, World, SpeciesRec } from './world';
@@ -61,7 +61,10 @@ export function validateSnapshot(s: any): string | null {
 }
 
 export function deserialize(s: Snapshot): World {
-  const w = new World(structuredClone(s.cfg));
+  // 저장 뒤에 추가된 설정 항목은 현재 기본값으로 채운다 (없으면 undefined → NaN이 퍼진다)
+  const saved = structuredClone(s.cfg) as Config;
+  const cfg = { ...defaultConfig(), ...saved, features: { ...defaultConfig().features, ...(saved.features ?? {}) } } as Config;
+  const w = new World(cfg);
   w.tick = s.tick; w.rng.setState(s.rng);
   w.terrain.set(s.terrain); w.dom.set(s.dom); w.zone.set(s.zone); w.sunMul.set(s.sunMul);
   w.devast.set(s.devast); w.pathogen.set(s.pathogen);
