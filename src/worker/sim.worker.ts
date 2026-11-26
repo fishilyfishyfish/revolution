@@ -60,6 +60,16 @@ function frame(force = false) {
   lastFrame = now;
 }
 
+function speciesInfo(key: 'species' | 'speciesB') {
+  const w = world!; const g = new Map<number, { n: number; size: number; aq: number; d: number[] }>();
+  for (const i of w.inds) {
+    const id = i[key]; let r = g.get(id); if (!r) g.set(id, (r = { n: 0, size: 0, aq: 0, d: [0, 0, 0, 0] }));
+    r.n++; r.size += i.t.size; r.aq += i.t.aq; for (let k = 0; k < 4; k++) r.d[k] += i.t.diet[k];
+  }
+  return [...g.entries()].filter(([, r]) => r.n >= 5).sort((a, b) => b[1].n - a[1].n).slice(0, 8)
+    .map(([id, r]) => ({ id, count: r.n, size: r.size / r.n, aq: r.aq / r.n, diet: r.d.map((x) => x / r.n) }));
+}
+
 function stats() {
   const w = world!;
   const strip = (a: typeof w.spA) => a.map(({ id, parent, born, died, peak, count }) => ({ id, parent, born, died, peak, count }));
@@ -67,6 +77,7 @@ function stats() {
   post({
     t: 'stats', cols: w.history.cols, rows: w.history.rows.slice(sentRows), from: sentRows,
     spHist: w.spHist.slice(sentSp), spHistFrom: sentSp,
+    spInfo: { A: speciesInfo('species'), B: speciesInfo('speciesB') },
     spA: strip(w.spA), spB: strip(w.spB), events: w.events, log: w.log, hists: w.hists,
     costs: Array.from(w.cumCosts), cnt: { ...w.cnt },
     energy: { ...e, cumIn: w.cumIn, cumOut: w.cumOut },

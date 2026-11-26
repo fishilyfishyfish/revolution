@@ -24,6 +24,7 @@ export interface FrameMsg {
 export interface StatsMsg {
   t: 'stats'; cols: string[]; rows: number[][]; from: number; // history에서 from 인덱스부터의 새 행
   spHist: [number, number[]][]; spHistFrom: number;
+  spInfo: { A: SpInfo[]; B: SpInfo[] };
   spA: { id: number; parent: number; born: number; died: number; peak: number; count: number }[];
   spB: { id: number; parent: number; born: number; died: number; peak: number; count: number }[];
   events: { tick: number; kind: string; info?: string }[];
@@ -33,6 +34,7 @@ export interface StatsMsg {
   energy: { plants: number; soil: number; corpse: number; bodies: number; total: number; cumIn: number; cumOut: number };
   env: { strain: number; sun: number; meanTemp: number; seasonAmp: number; seasonPeriod: number; climShift: number };
 }
+export interface SpInfo { id: number; count: number; size: number; aq: number; diet: number[] }
 export interface SnapMeta { id: number; tick: number; label: string; hasIv: boolean }
 export type FromWorker =
   | FrameMsg | StatsMsg

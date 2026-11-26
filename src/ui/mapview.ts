@@ -2,7 +2,7 @@ import type { FrameMsg } from '../worker/protocol';
 
 export type ViewBg = 'plants' | 'biome' | 'temp' | 'sun';
 export type ViewInd = 'hue' | 'speciesA' | 'speciesB' | 'energy';
-export interface ViewOpts { bg: ViewBg; ind: ViewInd; showInd: boolean; selected: number; brush: { x: number; y: number; r: number } | null }
+export interface ViewOpts { bg: ViewBg; ind: ViewInd; showInd: boolean; selected: number; hl?: number; brush: { x: number; y: number; r: number } | null }
 export interface Maps { terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; sun: Float32Array; devast: Uint16Array }
 
 const PC = [[70, 200, 90], [225, 175, 60], [90, 170, 230]];
@@ -56,6 +56,8 @@ export class MapView {
       const a = f.ind; const n = a.length / 10;
       for (let i = 0; i < n; i++) {
         const k = i * 10, x = a[k] * sc, y = a[k + 1] * sc, ang = a[k + 2], rad = Math.max(1.6, a[k + 3] * sc * 0.9);
+        const sid = o.ind === 'speciesA' ? a[k + 5] : o.ind === 'speciesB' ? a[k + 6] : -2;
+        ctx.globalAlpha = o.hl !== undefined && o.hl >= 0 && sid !== o.hl ? 0.18 : 1; // 범례에서 고른 종만 강조
         ctx.fillStyle = o.ind === 'hue' ? hsl(a[k + 4], 80, 55) : o.ind === 'speciesA' ? speciesColor(a[k + 5]) : o.ind === 'speciesB' ? speciesColor(a[k + 6])
           : `hsl(${Math.round(a[k + 9] * 120)},80%,50%)`;
         ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.2832); ctx.fill();
@@ -63,6 +65,7 @@ export class MapView {
         ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(ang) * rad * 1.7, y + Math.sin(ang) * rad * 1.7); ctx.stroke();
         if (a[k + 8] === o.selected) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, rad + 4, 0, 6.2832); ctx.stroke(); }
       }
+      ctx.globalAlpha = 1;
     }
     if (o.brush) {
       ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5; ctx.beginPath();

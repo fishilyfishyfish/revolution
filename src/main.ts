@@ -10,7 +10,7 @@ import { COST_NAMES } from './sim/world';
 import { CAUSE_NAMES } from './sim/lineage';
 import { snapshotFromJSON, snapshotToJSON } from './sim/snapshot';
 import type { Intervention } from './sim/world';
-import type { FrameMsg, FromWorker, InspectData, SnapMeta, StatsMsg } from './worker/protocol';
+import type { FrameMsg, FromWorker, InspectData, SnapMeta, SpInfo, StatsMsg } from './worker/protocol';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const client = new SimClient();
@@ -36,7 +36,7 @@ client.onMsg = (m: FromWorker) => {
     if (m.spHistFrom === 0) spHist = []; else spHist.length = m.spHistFrom;
     for (const r of m.spHist) spHist.push(r);
     if (st && m.events.length > st.events.length) toast('💀 전멸! 랜덤 게놈으로 재시작했어요', 4000);
-    st = m; chartsDirty = true; updateHud();
+    st = m; chartsDirty = true; updateHud(); renderLegend();
   } else if (m.t === 'snaps') { if (m.list.length > snapMetas.length && !snapToastShown) { snapToastShown = true; toast('📸 개입 직전 스냅샷 저장됨 — 🌍 환경에서 분기 비교 가능'); } snapMetas = m.list; renderSnaps(); }
   else if (m.t === 'inspect') { insp = m.data; renderInspect(); }
   else if (m.t === 'snap') {
@@ -210,6 +210,28 @@ function openBranch(snap: any, iv: Intervention | null) {
 }
 $('branchClose').onclick = () => { branch?.close(); branch = null; $('branch').classList.remove('open'); };
 
+// ── 지도 범례: 색 → 종 (특징 요약, 눌러서 강조) ──
+let hlSpecies = -1;
+function describeSp(r: SpInfo): string {
+  const names = ['식물A', '식물B', '식물C', '육식'];
+  let mi = 0; for (let k = 1; k < 4; k++) if (r.diet[k] > r.diet[mi]) mi = k;
+  const food = r.diet[mi] < 0.45 ? '잡식' : mi === 3 ? '육식' : `${names[mi]} 전문`;
+  const home = r.aq > 0.6 ? '수생' : r.aq > 0.3 ? '반수생' : '육상';
+  const body = r.size < 0.9 ? '소형' : r.size < 1.8 ? '중형' : '대형';
+  return `${food} · ${home} · ${body}`;
+}
+function renderLegend() {
+  const el = $('legend'); const mode = ($('vind') as HTMLSelectElement).value;
+  if (!st) { el.hidden = true; return; }
+  if (mode === 'hue') { el.hidden = false; el.innerHTML = '<div class="lt">색 = 색 유전자 (중립 형질, 계통 추적용). 종을 보려면 🌍 표시 → 개체 색을 "종"으로</div>'; return; }
+  if (mode === 'energy') { el.hidden = false; el.innerHTML = '<div class="lt">색 = 에너지 (빨강 낮음 → 초록 높음)</div>'; return; }
+  const rows = mode === 'speciesA' ? st.spInfo.A : st.spInfo.B;
+  if (hlSpecies >= 0 && !rows.some((r) => r.id === hlSpecies)) hlSpecies = -1;
+  el.hidden = false;
+  el.innerHTML = `<div class="lt">${mode === 'speciesA' ? '종 (게놈 거리 클러스터)' : '종 (교배 가능 집단)'} · 눌러서 강조</div>` + (rows.length ? rows.map((r) =>
+    `<div class="lr${r.id === hlSpecies ? ' on' : ''}" data-id="${r.id}"><span class="lc" style="background:${speciesColor(r.id)}"></span><span><b>#${r.id}</b> ${r.count}마리<br><span style="color:var(--muted)">${describeSp(r)}</span></span></div>`).join('') : '<div class="lt">표시할 종 없음</div>');
+  el.querySelectorAll<HTMLElement>('.lr').forEach((d) => d.onclick = () => { const id = +d.dataset.id!; hlSpecies = hlSpecies === id ? -1 : id; renderLegend(); dirty = true; });
+}
 function updateHud() {
   if (!st || !lastFrame) return;
   const e = st.env, ph = ((lastFrame.tick / e.seasonPeriod) % 1 + 1) % 1;
@@ -297,7 +319,7 @@ function frameLoop() {
   const c = canvas, r = c.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
   if (Math.abs(c.width - r.width * dpr) > 2) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); dirty = true; }
   if (dirty && lastFrame) {
-    const o: ViewOpts = { bg: ($('vbg') as HTMLSelectElement).value as any, ind: ($('vind') as HTMLSelectElement).value as any, showInd: ($('vshow') as HTMLInputElement).checked, selected,
+    const o: ViewOpts = { bg: ($('vbg') as HTMLSelectElement).value as any, ind: ($('vind') as HTMLSelectElement).value as any, showInd: ($('vshow') as HTMLInputElement).checked, selected, hl: hlSpecies,
       brush: hoverPos && tool !== 'inspect' ? { ...hoverPos, r: brushR() } : null };
     if (($('render') as HTMLInputElement).checked) mv.draw(o); dirty = false;
   }
@@ -305,7 +327,7 @@ function frameLoop() {
   requestAnimationFrame(frameLoop);
 }
 setInterval(() => { chartsDirty = true; }, 700);
-['vbg', 'vind', 'vshow'].forEach((id) => { $(id).onchange = () => { dirty = true; }; });
+['vbg', 'vind', 'vshow'].forEach((id) => { $(id).onchange = () => { dirty = true; if (id === 'vind') { hlSpecies = -1; renderLegend(); } }; });
 window.addEventListener('resize', () => { dirty = true; chartsDirty = true; });
 renderSnaps();
 newWorld();
