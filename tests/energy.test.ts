@@ -85,3 +85,14 @@ describe('먹이 경쟁 우위(dominance)', () => {
     const d = mk(0.8); audit(d, 400); expect(d.checksum()).toBe(c.checksum());
   });
 });
+
+describe('약해진 개체의 감속(weakSlow)', () => {
+  it('0이면 기존과 같은 결과이고, 켜도 매 틱 회계가 맞고 결정론이 유지된다', () => {
+    const mk = (weakSlow?: number) => World.create(defaultConfig({ w: 40, h: 30, seed: 7, initPop: 100, ...(weakSlow === undefined ? {} : { weakSlow }), features: STAGES[7] }));
+    const a = mk(), b = mk(0); audit(a, 200); audit(b, 200);
+    expect(a.checksum()).toBe(b.checksum());
+    const c = mk(0.9); expect(audit(c, 400)).toBeLessThan(1e-9);
+    const d = mk(0.9); audit(d, 400); expect(d.checksum()).toBe(c.checksum());
+    const e = mk(0); audit(e, 400); expect(c.checksum()).not.toBe(e.checksum()); // 켜면 같은 400틱 뒤 결과가 실제로 달라진다
+  });
+});

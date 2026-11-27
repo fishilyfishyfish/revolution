@@ -623,8 +623,13 @@ export class World {
     const resting = ind.oRest > 0;
     const guard = ind.oGuard > 0;
     const still = torpor || resting;
-    let v = ind.v * 0.8 + ind.oAcc * t.vmax * 0.4;
-    if (v < 0) v = 0; else if (v > t.vmax) v = t.vmax;
+    let vm = t.vmax;
+    if (cfg.weakSlow > 0) { // 약해진 개체는 느리다: 저장량이 최대의 30% 아래로 내려갈수록, 최근 부상이 클수록 속도 한도가 줄어든다
+      const rf = ind.reserve / Math.max(1e-9, t.maxReserve * ind.f);
+      vm *= (1 - cfg.weakSlow * Math.max(0, 1 - rf / 0.3)) * (1 - 0.5 * cfg.weakSlow * ind.hurt);
+    }
+    let v = ind.v * 0.8 + ind.oAcc * vm * 0.4;
+    if (v < 0) v = 0; else if (v > vm) v = vm;
     if (still) v = 0; else if (guard) v *= 0.3;
     ind.v = v;
     if (ind.hurt > 0.001) ind.hurt *= 0.9; else ind.hurt = 0;
