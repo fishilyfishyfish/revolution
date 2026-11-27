@@ -14,9 +14,9 @@ for (let t = 1; t <= ticks; t++) {
   if (t % every === 0) {
     const g = w.atkGain.map((x, k) => x - pg[k]), c = w.atkCost.map((x, k) => x - pc[k]); pg = w.atkGain.slice(); pc = w.atkCost.slice();
     const f = (k: number) => `얻음${g[k].toFixed(0)}/비용${c[k].toFixed(0)}/순${(g[k] - c[k]).toFixed(0)}`;
-    const n = Math.max(1, w.inds.length); let dm = 0, carn = 0; const sz: number[] = []; for (const i of w.inds) { dm += i.t.diet[3]; if (i.t.diet[3] > 0.5) carn++; sz.push(i.t.size); } sz.sort((a, b) => a - b); const szM = sz.reduce((a, b) => a + b, 0) / Math.max(1, sz.length), szP = sz[Math.floor(sz.length * 0.9)] ?? 0;
+    const n = Math.max(1, w.inds.length); let dm = 0, carn = 0, slow = 0, vm = 0; const sz: number[] = []; for (const i of w.inds) { dm += i.t.diet[3]; if (i.t.diet[3] > 0.5) carn++; sz.push(i.t.size); if (i.t.vmax < 0.3) slow++; vm += i.t.vmax; } sz.sort((a, b) => a - b); const szM = sz.reduce((a, b) => a + b, 0) / Math.max(1, sz.length), szP = sz[Math.floor(sz.length * 0.9)] ?? 0;
     const d = w.dmgByClass.map((x, k) => x - pd[k]); pd = w.dmgByClass.slice(); const dt = d.reduce((a, b) => a + b, 0) || 1; const aR = atkT / Math.max(1, nT); atkT = 0; nT = 0;
-    line += ` [t${t / 1000}k 공격출력비${aR.toFixed(2)} 초식끼리피해${(d[0] / dt).toFixed(2)} 개체${w.inds.length} 크기${szM.toFixed(2)}/상위10%${szP.toFixed(2)} 고기식성${(dm / n).toFixed(2)} 육식${carn} 재시작${w.cnt.restarts} 피식${w.cnt.eaten} 초식형 ${f(0)} 잡식형 ${f(1)} 육식형 ${f(2)}]`;
+    line += ` [t${t / 1000}k 공격출력비${aR.toFixed(2)} 초식끼리피해${(d[0] / dt).toFixed(2)} 개체${w.inds.length} 크기${szM.toFixed(2)}/상위10%${szP.toFixed(2)} 느린개체${(slow / n).toFixed(2)} 평균속도${(vm / n).toFixed(2)} 고기식성${(dm / n).toFixed(2)} 육식${carn} 재시작${w.cnt.restarts} 피식${w.cnt.eaten} 초식형 ${f(0)} 잡식형 ${f(1)} 육식형 ${f(2)}]`;
   }
 }
 console.log(line);
