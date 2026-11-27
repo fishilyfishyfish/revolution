@@ -1,0 +1,21 @@
+// 대조 실험: 방향 입력(식물/사체/개체의 방향)을 지운 월드와 그대로인 월드를 같은 상태에서 이어서 돌려 비교한다(읽기 전용 진단).
+// 방향 정보가 쓰이고 있다면 지운 쪽의 섭취·출생·개체 수가 나빠진다. 사용: npx tsx scripts/diag_ablate.ts <seed> [T0] [이후틱]
+import { STAGES, defaultConfig } from '../src/sim/config';
+import { World } from '../src/sim/world';
+import { stepSim } from '../src/sim/runner';
+import { serialize, deserialize } from '../src/sim/snapshot';
+const seed = +(process.argv[2] ?? 1), T0 = +(process.argv[3] ?? 20000), after = +(process.argv[4] ?? 4000);
+const base = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], features: { ...STAGES[7] } }));
+for (let t = 0; t < T0; t++) stepSim(base);
+const snap = serialize(base);
+function run(blind: boolean) {
+  const w = deserialize(snap);
+  if (blind) { const orig = w.sense.bind(w); (w as any).sense = (ind: any, inp: Float64Array, noise: boolean, hashed?: boolean) => { const r = orig(ind, inp, noise, hashed); inp[0] = 0; inp[3] = 0; inp[5] = 0; return r; }; }
+  const b0 = w.cnt.births, s0 = w.cnt.starved; let pop = 0, res = 0, n = 0, gain = 0; const g0 = w.plantEat.reduce((a, x) => a + x, 0);
+  for (let t = 0; t < after; t++) { stepSim(w); pop += w.inds.length; for (const i of w.inds) { res += i.reserve / Math.max(1e-9, i.t.maxReserve * i.f); n++; } }
+  gain = w.plantEat.reduce((a, x) => a + x, 0) - g0;
+  return { 평균개체: pop / after, 출생: w.cnt.births - b0, 아사: w.cnt.starved - s0, 평균저장비: res / Math.max(1, n), 식물섭취: gain, 최종개체: w.inds.length };
+}
+const c = run(false), b = run(true);
+const f = (o: any) => Object.entries(o).map(([k, v]) => `${k} ${(v as number).toFixed(k === '평균저장비' ? 3 : 0)}`).join(' ');
+console.log(`s${seed} (T0 ${T0}, 이후 ${after}틱)\n  그대로: ${f(c)}\n  방향 입력 지움: ${f(b)}\n  비율(지움/그대로): 출생 ${(b.출생 / Math.max(1, c.출생)).toFixed(2)} 아사 ${(b.아사 / Math.max(1, c.아사)).toFixed(2)} 식물섭취 ${(b.식물섭취 / Math.max(1, c.식물섭취)).toFixed(2)} 평균저장비 ${(b.평균저장비 / Math.max(1e-9, c.평균저장비)).toFixed(2)}`);
