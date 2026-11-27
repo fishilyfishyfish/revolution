@@ -65,3 +65,13 @@ describe('토양 열손실(soilLoss)', () => {
     expect(a.totalEnergy().soil).toBeLessThan(b.totalEnergy().soil);
   });
 });
+
+describe('고기 소화 기본 효율(meatBase)', () => {
+  it('0이면 기존과 같은 결과이고, 켜도 매 틱 회계가 맞는다', () => {
+    const mk = (meatBase?: number) => World.create(defaultConfig({ w: 40, h: 30, seed: 5, initPop: 100, ...(meatBase === undefined ? {} : { meatBase }), features: STAGES[7] }));
+    const a = mk(), b = mk(0); audit(a, 200); audit(b, 200);
+    expect(a.checksum()).toBe(b.checksum());
+    const c = mk(0.6); expect(audit(c, 400)).toBeLessThan(1e-9);
+    expect(c.inds[0].t.eff[3]).toBeGreaterThan(0.5);
+  });
+});

@@ -15,6 +15,7 @@ export interface Config {
   w: number; h: number; seed: number; initPop: number; features: Features;
   // 식물/토양
   pMax: number; sunRate: number; soilInit: number; soilHalf: number; soilShare: number;
+  meatBase: number; // 고기 소화 기본 효율(0=기존: 식성 0이면 효율 0). 효율 = effMax·(meatBase + (1−meatBase)·식성^dietCurve)
   soilLoss: number; // 분해자 열손실: 토양 에너지가 틱마다 이 비율만큼 시스템 밖으로 나간다 (0=없음, 기존 동작)
   senescence: number; corpseDecay: number; plantTempOpt: number[]; plantTempWidth: number;
   plantMin: number; corpseMin: number; offProfile: number;
@@ -43,7 +44,7 @@ export function defaultConfig(over: ConfigOverride = {}): Config {
   const c: Config = {
     w: 128, h: 96, seed: 1, initPop: 400,
     features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true, splitAttack: true },
-    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55, soilLoss: 0,
+    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55, soilLoss: 0, meatBase: 0,
     senescence: 0, corpseDecay: 0.01, plantTempOpt: [18, 8, 28], plantTempWidth: 14,
     plantMin: 0.5, corpseMin: 1.0, offProfile: 0.4,
     meanTemp: 15, seasonAmp: 6, seasonPeriod: 1200, seasonGrowthAmp: 0.3,
