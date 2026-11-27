@@ -4,11 +4,21 @@ import { STAGES, defaultConfig } from '../src/sim/config';
 import { World } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
 import { serialize, deserialize } from '../src/sim/snapshot';
+import { brainForward, NIN, NH, NOUT } from '../src/sim/genome';
 const seed = +(process.argv[2] ?? 1), T0 = +(process.argv[3] ?? 20000), after = +(process.argv[4] ?? 4000);
 const over = JSON.parse(process.env.CFG ?? '{}');
 const base = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...over, features: { ...STAGES[7] } }));
+// 오아시스(덩어리 먹이 간이판): OASIS=비율이면 평지 칸 중 그 비율만 햇빛 배율 1/비율, 나머지는 0(초기 환경 조건, 시뮬레이션 난수와 별개의 난수로 고른다)
+const OASIS = process.env.OASIS ? +process.env.OASIS : 0;
+if (OASIS > 0) {
+  let a = (seed * 2654435761) >>> 0; const r = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  for (let c = 0; c < base.n; c++) if (base.terrain[c] === 0) base.sunMul[c] = r() < OASIS ? 1 / OASIS : 0;
+}
 for (let t = 0; t < T0; t++) stepSim(base);
 const snap = serialize(base);
+{ base.buildHash(); const inp = new Float64Array(NIN), hid = new Float64Array(NH), out = new Float64Array(NOUT); let aP = 0, nP = 0;
+  for (const ind of base.inds) { base.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out, !!base.cfg.features.neat, ind.lw ?? null, null); if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { nP++; if (out[0] * inp[0] > 0) aP++; } }
+  console.log(`[T0 ${T0}] 개체 ${base.inds.length} 식물쪽회전 ${nP ? (aP / nP).toFixed(2) : '-'}(${nP}) 재시작 ${base.cnt.restarts} 오아시스 ${OASIS || '없음'}`); }
 function run(mode: 'control' | 'blind' | 'ideal') {
   const blind = mode === 'blind';
   const w = deserialize(snap);
