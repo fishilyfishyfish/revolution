@@ -32,7 +32,7 @@ let branch: Branch | null = null;
 
 client.onMsg = (m: FromWorker) => {
   if (m.t === 'map') { if (prepMode) { setPrep(false); newWorld({ terrain: m.terrain, dom: m.dom, zone: m.zone }); } return; }
-  if (m.t === 'frame') { mv.setFrame(m); lastFrame = m; dirty = true; running = m.running; $('play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; $('play').classList.toggle('on', !running);
+  if (m.t === 'frame') { mv.setFrame(m); lastFrame = m; dirty = true; running = m.running; $('play').textContent = prepMode ? '▶ 이 지형으로 시작' : running ? '⏸ 일시정지' : '▶ 재생'; $('play').classList.toggle('on', !running);
     $('readout').textContent = `틱 ${m.tick} · 개체 ${m.pop} · ${m.tps.toFixed(0)} tick/s`; }
   else if (m.t === 'stats') {
     if (m.from === 0) hist = { cols: m.cols, rows: [] }; else hist.rows.length = m.from;
@@ -72,15 +72,17 @@ function toastUnused(msg: string, ms = 2600) {
   const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; $('toasts').appendChild(t);
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 450); }, ms);
 }
-$('play').onclick = () => { running = !running; client.send({ t: 'run', running }); branch?.run(running); };
+$('play').onclick = () => { if (prepMode) { client.send({ t: 'getMap' }); return; } running = !running; client.send({ t: 'run', running }); branch?.run(running); };
 $('step').onclick = () => { client.send({ t: 'step', n: 1 }); };
 const DEF: Record<string, [boolean, number]> = { herb: [true, 300], omni: [false, 100], predator: [false, 25], fish: [false, 250], fishpred: [false, 20] };
 $('presets').innerHTML = PRESETS.map((p) => `<div class="row"><label style="flex:1 1 auto"><input type="checkbox" data-p="${p.name}" ${DEF[p.name][0] ? 'checked' : ''}/> ${p.icon} ${p.label}</label><input type="number" data-n="${p.name}" value="${DEF[p.name][1]}" min="1" max="800" style="width:70px"/></div>`).join('');
 let prepMode = false;
 function setPrep(on: boolean) {
   prepMode = on; $('prepBar').style.display = on ? '' : 'none';
-  ($('play') as HTMLButtonElement).disabled = on; ($('step') as HTMLButtonElement).disabled = on; ($('prepTerrain') as HTMLButtonElement).disabled = on;
-  if (on) (document.querySelector('#toolbtns [data-tool="terrain1"]') as HTMLButtonElement | null)?.click();
+  ($('step') as HTMLButtonElement).disabled = on; ($('prepTerrain') as HTMLButtonElement).disabled = on;
+  $('play').textContent = on ? '▶ 이 지형으로 시작' : '▶ 재생'; $('play').classList.toggle('on', !on);
+  if (on) { (document.querySelector('#toolbtns [data-tool="terrain1"]') as HTMLButtonElement | null)?.click(); $('hint').textContent = '🗺 지형 편집 중 — 위의 ▶ 버튼(또는 Space)을 누르면 이 지형으로 월드를 시작해요'; }
+  else $('hint').textContent = HINT[tool] ?? '';
 }
 function newWorld(customMap?: { terrain: number[]; dom: number[]; zone: number[] } | null) {
   const seed = +($('seed') as HTMLInputElement).value || 1, stage = +($('stage') as HTMLSelectElement).value;
