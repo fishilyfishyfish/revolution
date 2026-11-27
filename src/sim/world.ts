@@ -70,6 +70,7 @@ export class World {
   strain = 0.5; // 병원체 균주(0~1). 인구의 면역형 평균을 뒤따라 움직인다 (빈도 의존 선택)
   private prevP: Float64Array[] = [];
   // 장부
+  dmgByClass = new Float64Array(9); // 진단용(결과에 영향 없음): [공격자 식성 구간*3 + 피해자 식성 구간]에 쌓은 피해량. 구간: 고기 식성 <0.2 / <0.5 / 그 이상
   cumIn = 0; cumOut = 0; tickIn = 0; tickOut = 0;
   costs = new Float64Array(7);
   cumCosts = new Float64Array(7);
@@ -720,6 +721,7 @@ export class World {
           : t.attackPow * ind.f * str;
         const dmg = Math.min(victim.reserve > 0 ? victim.reserve : 0, raw / shield);
         victim.reserve -= dmg;
+        { const ca = t.diet[3] < 0.2 ? 0 : t.diet[3] < 0.5 ? 1 : 2, cv = victim.t.diet[3] < 0.2 ? 0 : victim.t.diet[3] < 0.5 ? 1 : 2; this.dmgByClass[ca * 3 + cv] += dmg; }
         victim.hurt = Math.min(1, victim.hurt + (5 * dmg) / (victim.t.maxReserve * victim.f));
         if (victim.t.toxin > 0.01) this.pay(ind, cfg.toxinK * victim.t.toxin * dmg, 5); // 독: 공격자 열손실
         const room = t.maxReserve * ind.f - ind.reserve;
