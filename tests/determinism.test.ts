@@ -169,3 +169,24 @@ describe('수명 내 학습(learnRate)', () => {
     expect(b.checksum()).toBe(a.checksum());
   });
 });
+
+describe('수풀(coverFrac)과 갈증(thirstRate)', () => {
+  const mkE = (seed: number, over: Record<string, number> = {}) => World.create(defaultConfig({ w: 48, h: 36, seed, initPop: 120, waterLevel: 0.3, ...over }));
+  it('끄면 기존과 같은 결과', () => {
+    expect(run(mkE(3), 300, {}).checksum()).toBe(run(mkE(3, { coverFrac: 0, thirstRate: 0 }), 300, {}).checksum());
+  });
+  it('수풀: 평지의 대략 그 비율이 덮이고, 회계·결정론·스냅샷 이어달리기가 맞는다', () => {
+    const a = mkE(4, { coverFrac: 0.2 }); let pl = 0, cv = 0; for (let c = 0; c < a.n; c++) if (a.terrain[c] === 0) { pl++; if (a.cover[c]) cv++; }
+    expect(cv / pl).toBeGreaterThan(0.12); expect(cv / pl).toBeLessThan(0.28);
+    for (let i = 0; i < 300; i++) { const b = a.totalEnergy().total; stepSim(a); expect(Math.abs(a.totalEnergy().total - b - (a.tickIn - a.tickOut)) / Math.max(1, b)).toBeLessThan(1e-9); }
+    expect(run(mkE(4, { coverFrac: 0.2 }), 300, {}).checksum()).toBe(a.checksum());
+    const c = run(mkE(4, { coverFrac: 0.2 }), 200, {}); const d = deserialize(serialize(c)); run(c, 200, {}); run(d, 200, {}); expect(d.checksum()).toBe(c.checksum());
+  });
+  it('갈증: 수분이 줄고 물가에서 채워지며, 회계·결정론·스냅샷 이어달리기가 맞는다', () => {
+    const a = mkE(5, { thirstRate: 0.004 });
+    for (let i = 0; i < 400; i++) { const b = a.totalEnergy().total; stepSim(a); expect(Math.abs(a.totalEnergy().total - b - (a.tickIn - a.tickOut)) / Math.max(1, b)).toBeLessThan(1e-9); }
+    const ws = a.inds.map((i) => i.water); expect(Math.min(...ws)).toBeLessThan(0.9); expect(Math.max(...ws)).toBeGreaterThan(0.95);
+    expect(run(mkE(5, { thirstRate: 0.004 }), 400, {}).checksum()).toBe(a.checksum());
+    const c = run(mkE(5, { thirstRate: 0.004 }), 200, {}); const d = deserialize(serialize(c)); run(c, 200, {}); run(d, 200, {}); expect(d.checksum()).toBe(c.checksum());
+  });
+});

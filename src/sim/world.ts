@@ -35,6 +35,7 @@ export class Ind {
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
   lw: Float32Array | null = null; le: Float32Array | null = null; lbase = 0; lscale = 0.3; lastRes = 0; birthSpent = 0; // 수명 내 학습 상태(가중치 변화, 적격 흔적, 기준선, 크기, 직전 저장량, 번식에 쓴 에너지)
+  water = 1; // 수분(갈증 옵션)
   mem = new Float32Array(NH); // 되먹임 기억(직전 틱 은닉 노드 값)
   px = 0; py = 0; // 이번 틱 이동 전 위치(연속 접촉 판정용, 저장하지 않는다)
   oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; oAtk = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
@@ -66,7 +67,7 @@ export class World {
   rng: Rng;
   tick = 0;
   w: number; h: number; n: number;
-  terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array;
+  terrain: Uint8Array; dom: Uint8Array; zone: Uint8Array; cover: Uint8Array; // cover: 수풀(숨을 곳) 덮개, 평지에서만 의미가 있다
   sunMul: Float32Array; devast: Uint16Array; pathogen: Float32Array;
   plants: Float64Array[]; soil: Float64Array; corpse: Float64Array;
   inds: Ind[] = [];
@@ -116,7 +117,7 @@ export class World {
     this.terrain = new Uint8Array(n); this.dom = new Uint8Array(n); this.zone = new Uint8Array(n).fill(1);
     this.sunMul = new Float32Array(n).fill(1); this.devast = new Uint16Array(n); this.pathogen = new Float32Array(n);
     this.plants = [new Float64Array(n), new Float64Array(n), new Float64Array(n)];
-    this.soil = new Float64Array(n); this.corpse = new Float64Array(n);
+    this.soil = new Float64Array(n); this.corpse = new Float64Array(n); this.cover = new Uint8Array(n);
     this.sunG = cfg.sun; this.meanTempG = cfg.meanTemp; this.seasonAmpG = cfg.seasonAmp; this.seasonPeriodG = cfg.seasonPeriod;
     this.nbx = Math.ceil(this.w / BS); this.nby = Math.ceil(this.h / BS);
     this.bStart = new Int32Array(this.nbx * this.nby + 1);
@@ -168,6 +169,12 @@ export class World {
       this.soil[i] = cfg.soilInit;
       if (t === T_PLAIN) this.plants[this.dom[i]][i] = cfg.pMax * cfg.initPlant;
       else if (t === T_WATER) this.plants[2][i] = cfg.pMax * cfg.initPlant; // 수초
+    }
+    if (cfg.coverFrac > 0) { // 수풀 패치: 노이즈 상위 coverFrac 비율의 평지 칸(옵션이 켜졌을 때만 난수를 더 쓴다)
+      const nc = this.noiseField(9); const vals: number[] = [];
+      for (let i = 0; i < n; i++) if (this.terrain[i] === T_PLAIN) vals.push(nc[i]);
+      vals.sort((x, y) => x - y); const thr = vals.length ? vals[Math.min(vals.length - 1, Math.floor(vals.length * (1 - cfg.coverFrac)))] : 2;
+      for (let i = 0; i < n; i++) this.cover[i] = this.terrain[i] === T_PLAIN && nc[i] >= thr ? 1 : 0;
     }
   }
 
@@ -472,6 +479,7 @@ export class World {
     }
     // 가장 가까운 개체 (시야 안)
     const Rn = R > t.hearR ? R : t.hearR, hear2 = t.hearR * t.hearR, R2 = R * R;
+    const cov = cfg.coverFrac > 0, see2 = cfg.coverSee * cfg.coverSee;
     let best = -1, bd2 = Rn * Rn;
     if (hashed) {
       const nbx = this.nbx, nby = this.nby;
@@ -485,6 +493,7 @@ export class World {
           if (o === ind || !o.alive) continue;
           const dx = o.x - ind.x, dy = o.y - ind.y, d2 = dx * dx + dy * dy;
           if (d2 >= bd2) continue;
+          if (cov && d2 > see2) { const oc = (o.y | 0) * w + (o.x | 0); if (this.cover[oc] && this.terrain[oc] === T_PLAIN) continue; } // 수풀에 숨은 개체는 가까이 와야 보인다
           // 청각: 시야 밖이라도 hearR 안이면 감지
           if (d2 > hear2 && (d2 > R2 || (!full && dx * ca + dy * sa < Math.sqrt(d2) * cosHalf))) continue;
           bd2 = d2; best = this.bItems[q];
@@ -509,7 +518,7 @@ export class World {
     inp[10] = ind.reserve / (t.maxReserve * ind.f);
     inp[11] = (this.tempAt(c0) + 10) / 25 - 1;
     inp[12] = this.terrain[c0] * 0.5;
-    inp[13] = noise ? this.rng.next() * 2 - 1 : 0;
+    inp[13] = cfg.thirstRate > 0 ? 1 - ind.water : noise ? this.rng.next() * 2 - 1 : 0; // 갈증 옵션이 켜지면 노이즈 대신 목마름
     inp[14] = Math.sin(ind.age * t.osc);
     inp[15] = ind.hurt;
     if (cfg.features.memory) for (let j = 0; j < NH; j++) inp[NIN_BASE + j] = ind.mem[j]; // 기억 입력
@@ -678,6 +687,7 @@ export class World {
     const exT = Math.abs(dT) > t.tolW ? Math.abs(dT) - t.tolW : 0; // 허용폭 안은 무료
     const therm = cfg.cTherm * exT * exT * t.m075 * (1 - 0.6 * t.insul);
     let base = basalNow + move + t.visCost + therm + t.brainCost;
+    if (cfg.thirstRate > 0) { ind.water -= cfg.thirstRate; if (ind.water <= 0) { ind.water = 0; base += basalNow * cfg.thirstCost; } } // 갈증: 수분이 0이면 대사 비용 증가(열손실)
     if (guard) base += cfg.cAct * t.m075;
     if (torpor) base *= 1 - 0.8 * t.hiber;
     if (resting) base *= 0.6;
@@ -694,6 +704,10 @@ export class World {
     if (this.mortality(ind, terr, dT)) return;
 
     // 먹기/공격
+    if (cfg.thirstRate > 0 && ind.alive && ind.oBite > 0 && !still) { // 마시기: 먹기 출력이 켜진 채 지금 칸이나 입 앞 칸이 물이면 수분을 채운다
+      const fx = ind.x + Math.cos(ind.a) * (this.rad(ind) + 0.3), fy = ind.y + Math.sin(ind.a) * (this.rad(ind) + 0.3);
+      if (terr === T_WATER || (fx >= 0 && fy >= 0 && fx < this.w && fy < this.h && this.terrain[(fy | 0) * this.w + (fx | 0)] === T_WATER)) ind.water = 1;
+    }
     if (cfg.features.splitAttack) {
       // 공격(개체를 무는 행동)과 먹기(바닥의 식물·사체)는 별개의 출력이다
       if (ind.oAtk > 0 && !still && cfg.features.attack) {

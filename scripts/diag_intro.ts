@@ -6,7 +6,7 @@ import { World } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
 const [seed, T0, cnt, after] = [+(process.argv[2] ?? 1), +(process.argv[3] ?? 15000), +(process.argv[4] ?? 30), +(process.argv[5] ?? 10000)];
 const preset = process.argv[6] ?? 'predator';
-const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], features: { ...STAGES[7] } }));
+const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...JSON.parse(process.env.CFG ?? '{}'), features: { ...STAGES[7] } }));
 for (let t = 0; t < T0; t++) stepSim(w);
 const pop0 = w.inds.length, before = w.totalEnergy().total;
 const made = w.seedIndividuals(cnt, true, preset);
