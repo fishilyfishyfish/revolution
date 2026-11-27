@@ -108,3 +108,14 @@ describe('느린 초식 프리셋(snail)', () => {
     expect(audit(w, 300)).toBeLessThan(1e-9);
   });
 });
+
+describe('연속 접촉 판정(sweptAttack)', () => {
+  it('끄면 기존과 같은 결과이고, 켜도 회계·결정론이 유지되며 결과가 달라진다', () => {
+    const mk = (sweptAttack?: boolean) => World.create(defaultConfig({ w: 40, h: 30, seed: 9, founders: [{ preset: 'herb', count: 80 }, { preset: 'predator', count: 12 }], ...(sweptAttack === undefined ? {} : { sweptAttack }), features: STAGES[7] }));
+    const a = mk(), b = mk(false); audit(a, 300); audit(b, 300);
+    expect(a.checksum()).toBe(b.checksum());
+    const c = mk(true); expect(audit(c, 400)).toBeLessThan(1e-9);
+    const d = mk(true); audit(d, 400); expect(d.checksum()).toBe(c.checksum());
+    const e = mk(false); audit(e, 400); expect(c.checksum()).not.toBe(e.checksum());
+  });
+});

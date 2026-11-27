@@ -9,6 +9,12 @@ export const T_PLAIN = 0, T_WATER = 1, T_MOUNTAIN = 2;
 export const NPLANT = 3;
 export const MODE_NONE = 0, MODE_ASEX = 1, MODE_SEX = 2;
 const BS = 4; // 공간 해시 버킷 크기
+// 점 (x,y)에서 선분 (ax,ay)-(bx,by)까지의 거리
+function segDist(x: number, y: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+  let u = l2 > 1e-12 ? ((x - ax) * dx + (y - ay) * dy) / l2 : 0; u = u < 0 ? 0 : u > 1 ? 1 : u;
+  const cx = ax + u * dx - x, cy = ay + u * dy - y; return Math.sqrt(cx * cx + cy * cy);
+}
 
 export type Shape = { shape?: 'circle' | 'rect'; x: number; y: number; r: number; x2?: number; y2?: number };
 export type Intervention =
@@ -29,6 +35,7 @@ export class Ind {
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
   mem = new Float32Array(NH); // 되먹임 기억(직전 틱 은닉 노드 값)
+  px = 0; py = 0; // 이번 틱 이동 전 위치(연속 접촉 판정용, 저장하지 않는다)
   oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; oAtk = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
 }
 
@@ -641,7 +648,7 @@ export class World {
     let nx = ind.x + Math.cos(ind.a) * sp, ny = ind.y + Math.sin(ind.a) * sp;
     if (nx < 0 || nx >= this.w) { ind.a = Math.PI - ind.a; nx = nx < 0 ? 0 : this.w - 0.001; }
     if (ny < 0 || ny >= this.h) { ind.a = -ind.a; ny = ny < 0 ? 0 : this.h - 0.001; }
-    ind.x = nx; ind.y = ny;
+    ind.px = ind.x; ind.py = ind.y; ind.x = nx; ind.y = ny;
     // 대사 (전부 열손실)
     const dT = Tloc - t.tOpt;
     const basalNow = t.basal * ind.f075;
@@ -718,15 +725,18 @@ export class World {
     if (cfg.features.attack && mode !== 1) {
       let victim: Ind | null = null, bd = 1e9;
       const nbx = this.nbx, nby = this.nby;
-      const bx0 = Math.max(0, Math.floor((mx - 3) / BS)), bx1 = Math.min(nbx - 1, Math.floor((mx + 3) / BS));
-      const by0 = Math.max(0, Math.floor((my - 3) / BS)), by1 = Math.min(nby - 1, Math.floor((my + 3) / BS));
+      // 연속 접촉 판정이면 이번 틱에 입이 지나온 경로(이전 입 위치 → 지금 입 위치) 위에서 찾는다
+      const swept = cfg.sweptAttack;
+      const pmx = swept ? ind.px + Math.cos(ind.a) * (rI + 0.1) : mx, pmy = swept ? ind.py + Math.sin(ind.a) * (rI + 0.1) : my;
+      const bx0 = Math.max(0, Math.floor((Math.min(mx, pmx) - 3) / BS)), bx1 = Math.min(nbx - 1, Math.floor((Math.max(mx, pmx) + 3) / BS));
+      const by0 = Math.max(0, Math.floor((Math.min(my, pmy) - 3) / BS)), by1 = Math.min(nby - 1, Math.floor((Math.max(my, pmy) + 3) / BS));
       const inds = this.inds;
       for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
         const b = by * nbx + bx;
         for (let q = this.bStart[b], e = this.bStart[b + 1]; q < e; q++) {
           const o = inds[this.bItems[q]];
           if (o === ind || !o.alive) continue;
-          const dx = o.x - mx, dy = o.y - my, d = Math.sqrt(dx * dx + dy * dy) - this.rad(o);
+          const d = (swept ? segDist(o.x, o.y, pmx, pmy, mx, my) : Math.hypot(o.x - mx, o.y - my)) - this.rad(o);
           if (d < 0.15 && d < bd) { bd = d; victim = o; }
         }
       }
