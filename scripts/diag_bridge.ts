@@ -13,8 +13,11 @@ const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count:
 let a = (seed * 2654435761) >>> 0; const r = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const mask = new Uint8Array(w.n); for (let c = 0; c < w.n; c++) mask[c] = r() < P ? 1 : 0;
 const right = (c: number) => c % w.w >= w.w / 2;
+const EFF = process.env.EFFRAMP ? +process.env.EFFRAMP : 0; // 식물 소화 효율을 RAMP틱에 걸쳐 0.9 → EFF로 낮춘다(환경 변수로 켤 때만)
+const eff0 = w.cfg.effPlant;
 function setEnv(t: number) {
   const al = mode === 'grad' ? Math.min(1, t / RAMP) : 1;
+  if (EFF > 0) { const e = eff0 + (EFF - eff0) * al; if (Math.abs(e - w.cfg.effPlant) > 1e-9) { w.cfg.effPlant = e; for (const ind of w.inds) ind.t.decode(ind.genome, w.cfg); } } // 형질 캐시를 다시 계산해야 기존 개체에도 반영된다
   for (let c = 0; c < w.n; c++) {
     if (w.terrain[c] !== 0) continue;
     if (mode === 'half' && !right(c)) { w.sunMul[c] = 1; continue; }
@@ -34,7 +37,7 @@ function probe(world: World) {
   const diet = ` 고기식성${(dm / Math.max(1, world.inds.length)).toFixed(2)} 잡식${omn} 육식${carn} 피식${world.cnt.eaten}`;
   return (mode === 'half' ? `왼쪽(보통) ${f(s.L)} / 오른쪽(오아시스) ${f(s.R)}` : `식물쪽 ${f(s.L)}`) + diet;
 }
-let line = `${mode} s${seed} P${P}${mode === 'grad' ? ` RAMP${RAMP}` : ''}:`;
+let line = `${mode} s${seed} P${P}${EFF > 0 ? ` 식물효율→${EFF}` : ''}${mode === 'grad' ? ` RAMP${RAMP}` : ''}:`;
 for (let t = 1; t <= ticks; t++) {
   if (mode === 'grad' ? t <= RAMP + 1 && (t % 50 === 1) : t === 1) setEnv(t); // 점진 변화는 50틱마다 갱신
   stepSim(w);
