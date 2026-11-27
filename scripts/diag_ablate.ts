@@ -5,7 +5,8 @@ import { World } from '../src/sim/world';
 import { stepSim } from '../src/sim/runner';
 import { serialize, deserialize } from '../src/sim/snapshot';
 const seed = +(process.argv[2] ?? 1), T0 = +(process.argv[3] ?? 20000), after = +(process.argv[4] ?? 4000);
-const base = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], features: { ...STAGES[7] } }));
+const over = JSON.parse(process.env.CFG ?? '{}');
+const base = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...over, features: { ...STAGES[7] } }));
 for (let t = 0; t < T0; t++) stepSim(base);
 const snap = serialize(base);
 function run(blind: boolean) {
