@@ -742,7 +742,22 @@ export class World {
     const a0 = this.plants[0][c], a1 = this.plants[1][c], a2 = this.plants[2][c], ac = this.corpse[c];
     const A = a0 + a1 + a2 + ac;
     if (A <= 1e-9) return;
-    const cap = t.biteCap * ind.f075 * ind.oBite;
+    let capMul = 1;
+    if (cfg.dominance > 0) { // 간섭 경쟁: 근처(0.8칸)에 몸무게 1.5배 이상이고 배고픈 개체가 있으면 한 입 한도가 줄어든다 (줄어든 몫은 땅에 남아 큰 개체가 먹는다)
+      const mi = t.mass * ind.f, nbx = this.nbx, nby = this.nby, inds = this.inds;
+      const bx0 = Math.max(0, Math.floor((ind.x - 0.8) / BS)), bx1 = Math.min(nbx - 1, Math.floor((ind.x + 0.8) / BS));
+      const by0 = Math.max(0, Math.floor((ind.y - 0.8) / BS)), by1 = Math.min(nby - 1, Math.floor((ind.y + 0.8) / BS));
+      outer: for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+        const bb = by * nbx + bx;
+        for (let q = this.bStart[bb], e = this.bStart[bb + 1]; q < e; q++) {
+          const o = inds[this.bItems[q]];
+          if (o === ind || !o.alive || o.t.mass * o.f < 1.5 * mi || o.reserve >= 0.9 * o.t.maxReserve * o.f) continue;
+          const dx = o.x - ind.x, dy = o.y - ind.y;
+          if (dx * dx + dy * dy < 0.64) { capMul = 1 - cfg.dominance; break outer; }
+        }
+      }
+    }
+    const cap = t.biteCap * ind.f075 * ind.oBite * capMul;
     let sc = cap >= A ? 1 : cap / A;
     { const sb = t.size < 0.8 ? 0 : t.size < 1.2 ? 1 : t.size < 1.7 ? 2 : 3; this.biteN[sb]++; if (cap >= A) this.biteAvail[sb]++; }
     let gain = (a0 * t.eff[0] + a1 * t.eff[1] + a2 * t.eff[2] + ac * t.eff[3]) * sc;

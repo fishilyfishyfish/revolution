@@ -75,3 +75,13 @@ describe('고기 소화 기본 효율(meatBase)', () => {
     expect(c.inds[0].t.eff[3]).toBeGreaterThan(0.5);
   });
 });
+
+describe('먹이 경쟁 우위(dominance)', () => {
+  it('0이면 기존과 같은 결과이고, 켜도 매 틱 회계가 맞는다', () => {
+    const mk = (dominance?: number) => World.create(defaultConfig({ w: 40, h: 30, seed: 6, initPop: 100, ...(dominance === undefined ? {} : { dominance }), features: STAGES[7] }));
+    const a = mk(), b = mk(0); audit(a, 200); audit(b, 200);
+    expect(a.checksum()).toBe(b.checksum());
+    const c = mk(0.8); expect(audit(c, 400)).toBeLessThan(1e-9);
+    const d = mk(0.8); audit(d, 400); expect(d.checksum()).toBe(c.checksum());
+  });
+});
