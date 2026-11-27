@@ -103,6 +103,7 @@ export class Traits {
       this.nodes = nn; this.conns = nc;
       this.brainCost = cfg.cBrain * 0.3 + cfg.cBrainStruct * (nc + 2 * nn) / MAXC;
     } else this.brainCost = cfg.cBrain + cfg.cBrainW * wa;
+    if (cfg.learnRate > 0) this.brainCost += cfg.cLearn; // 학습 기구의 유지비
     this.turnMax = cfg.turnK / this.size;
     this.biteCap = cfg.biteK * m075 * this.intakeMul;
     this.foodThr = Math.max(cfg.plantMin, 0.8 * this.biteCap); // 한 입 거리가 되는 먹이만 '보인다'
@@ -261,7 +262,8 @@ export function genomeDistance(a: Float32Array, b: Float32Array): number {
 export function compatProb(d: number, dmax: number): number { const p = 1 - d / dmax; return p > 0 ? p : 0; }
 
 // ── 뇌 순전파 ──
-export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float64Array, out: Float64Array, masked = false) {
+// lw: 수명 내 학습으로 생긴 출력층 가중치 변화(W2 NH×NOUT + B2 NOUT), xi: 출력 탐색 잡음(둘 다 없으면 기존과 같다)
+export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float64Array, out: Float64Array, masked = false, lw: Float32Array | null = null, xi: Float64Array | null = null) {
   if (masked) { // 구조 변이: 꺼진 노드·연결은 계산하지 않는다 (연산 비용도 그만큼 줄어든다)
     for (let j = 0; j < NH; j++) {
       if (g[MO + M_H + j] < 0.5) { hid[j] = 0; continue; }
@@ -271,7 +273,8 @@ export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float
     }
     for (let k = 0; k < NOUT; k++) {
       let s = g[BO + B2 + k];
-      for (let j = 0; j < NH; j++) if (g[MO + M_W2 + j * NOUT + k] >= 0.5) s += g[BO + W2 + j * NOUT + k] * hid[j];
+      for (let j = 0; j < NH; j++) if (g[MO + M_W2 + j * NOUT + k] >= 0.5) s += (g[BO + W2 + j * NOUT + k] + (lw ? lw[j * NOUT + k] : 0)) * hid[j];
+      if (lw) s += lw[NH * NOUT + k]; if (xi) s += xi[k];
       out[k] = Math.tanh(s);
     }
     return;
@@ -283,7 +286,8 @@ export function brainForward(g: Float32Array, inp: ArrayLike<number>, hid: Float
   }
   for (let k = 0; k < NOUT; k++) {
     let s = g[BO + B2 + k];
-    for (let j = 0; j < NH; j++) s += g[BO + W2 + j * NOUT + k] * hid[j];
+    for (let j = 0; j < NH; j++) s += (g[BO + W2 + j * NOUT + k] + (lw ? lw[j * NOUT + k] : 0)) * hid[j];
+    if (lw) s += lw[NH * NOUT + k]; if (xi) s += xi[k];
     out[k] = Math.tanh(s);
   }
 }

@@ -34,6 +34,7 @@ export class Ind {
   id = 0; x = 0; y = 0; a = 0; v = 0; reserve = 0; structE = 0; age = 0; f = 1; f075 = 1; // f: 성장 정도(현재 구조 에너지/성체)
   genome!: Float32Array; t = new Traits();
   species = -1; speciesB = -1; inf = 0; alive = true; birth = 0;
+  lw: Float32Array | null = null; le: Float32Array | null = null; lbase = 0; lscale = 0.3; lastRes = 0; birthSpent = 0; // 수명 내 학습 상태(가중치 변화, 적격 흔적, 기준선, 크기, 직전 저장량, 번식에 쓴 에너지)
   mem = new Float32Array(NH); // 되먹임 기억(직전 틱 은닉 노드 값)
   px = 0; py = 0; // 이번 틱 이동 전 위치(연속 접촉 판정용, 저장하지 않는다)
   oTurn = 0; oAcc = 0; oBite = 0; oRep = 0; oMate = 0; oGuard = 0; oRest = 0; oAtk = 0; hurt = 0; mode = 0; mated = false; rec = 0; // rec: 짝 찾는 중 남은 틱
@@ -99,7 +100,7 @@ export class World {
   hists: Record<string, number[]> = {};
   dead = false; // 재시작조차 불가능한 완전 전멸
   // 스크래치
-  private inp = new Float64Array(NIN); private hid = new Float64Array(NH); private out = new Float64Array(NOUT);
+  private inp = new Float64Array(NIN); private hid = new Float64Array(NH); private out = new Float64Array(NOUT); private xi = new Float64Array(NOUT);
   private bStart = new Int32Array(1); private bItems = new Int32Array(1);
   private nbx: number; private nby: number;
   private order = new Int32Array(0);
@@ -352,6 +353,25 @@ export class World {
 
   private rad(i: Ind) { return i.t.radius * (0.6 + 0.4 * i.f); }
 
+  // ── 수명 내 학습: 보상 = 개체 자신의 에너지 변화(번식에 쓴 에너지는 제외). 출력층 가중치만 조정하고 자식에게 물려주지 않는다 ──
+  private learnStep(ind: Ind): Float32Array {
+    const cfg = this.cfg, L = NH * NOUT + NOUT;
+    if (!ind.lw) { ind.lw = new Float32Array(L); ind.le = new Float32Array(L); ind.lastRes = ind.reserve; ind.lbase = 0; ind.lscale = 0.3; ind.birthSpent = 0; }
+    else {
+      const dR = ind.reserve - ind.lastRes + ind.birthSpent; ind.lastRes = ind.reserve; ind.birthSpent = 0;
+      const A = dR - ind.lbase; ind.lbase += 0.02 * A; ind.lscale += 0.02 * (Math.abs(A) - ind.lscale); // 이동 평균 기준선(이점 = 보상 − 기준선)
+      const An = Math.max(-3, Math.min(3, A / (ind.lscale + 1e-3))), lw = ind.lw, le = ind.le!, eta = cfg.learnRate;
+      for (let i = 0; i < L; i++) { const v = lw[i] + eta * An * le[i]; lw[i] = v > 2 ? 2 : v < -2 ? -2 : v; }
+    }
+    const sg = cfg.learnNoise; for (let k = 0; k < NOUT; k++) this.xi[k] = this.rng.gauss() * sg; // 탐색: 출력에 잡음(이 행동이 흔적에 남는다)
+    return ind.lw;
+  }
+  private learnTrace(ind: Ind) {
+    const le = ind.le!, lam = this.cfg.learnTrace, h = this.hid, xi = this.xi;
+    for (let j = 0; j < NH; j++) for (let k = 0; k < NOUT; k++) le[j * NOUT + k] = lam * le[j * NOUT + k] + h[j] * xi[k];
+    for (let k = 0; k < NOUT; k++) le[NH * NOUT + k] = lam * le[NH * NOUT + k] + xi[k];
+  }
+
   private ready(ind: Ind) {
     return ind.f >= 0.95 && ind.age >= this.cfg.matureAge && ind.reserve >= ind.t.thr * ind.t.maxReserve * ind.f;
   }
@@ -404,7 +424,7 @@ export class World {
     if (this.inds.length + this.born.length >= this.cfg.maxPop) return;
     if (p.t.give * p.reserve < p.t.structE * this.cfg.juvenileFrac * 1.05) return;
     const T = p.t.give * p.reserve;
-    p.reserve -= this.brood([p], p.t.clutchMax, T, p.t.mut, (g) => g.set(p.genome));
+    const spent = this.brood([p], p.t.clutchMax, T, p.t.mut, (g) => g.set(p.genome)); p.reserve -= spent; p.birthSpent += spent;
   }
 
   private birthSex(a: Ind, b: Ind, d = 0) {
@@ -413,7 +433,7 @@ export class World {
     const T = Ta + Tb;
     const n = Math.max(1, Math.floor((a.t.clutchMax + b.t.clutchMax) / 2));
     const spent = this.brood([a, b], n, T, 0.5 * (a.t.mut + b.t.mut), (g) => crossover(g, a.genome, b.genome, this.rng));
-    if (spent > 0) { const sc = spent / T; a.reserve -= Ta * sc; b.reserve -= Tb * sc; }
+    if (spent > 0) { const sc = spent / T; a.reserve -= Ta * sc; b.reserve -= Tb * sc; a.birthSpent += Ta * sc; b.birthSpent += Tb * sc; }
     void d;
   }
 
@@ -551,7 +571,9 @@ export class World {
       ind.mated = false; ind.mode = MODE_NONE;
       if (F.brain) {
         this.sense(ind, this.inp, true);
-        brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
+        const lw = cfg.learnRate > 0 ? this.learnStep(ind) : null;
+        brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat, lw, lw ? this.xi : null);
+        if (lw) this.learnTrace(ind);
         if (F.memory) { const lk = cfg.memLeak; for (let j = 0; j < NH; j++) ind.mem[j] += lk * (this.hid[j] - ind.mem[j]); } // 천천히 변하는 기억: 새 값 memLeak, 이전 기억 1−memLeak
         if (this.thinkHook) this.thinkHook(ind, this.inp, this.out); // 진단용(기본 없음): 대조 실험에서 출력을 덮어쓰는 데만 쓴다
         const o = this.out;

@@ -17,6 +17,7 @@ export interface Config {
   w: number; h: number; seed: number; initPop: number; features: Features; customMap?: CustomMap | null;
   // 식물/토양
   pMax: number; sunRate: number; soilInit: number; soilHalf: number; soilShare: number;
+  learnRate: number; learnNoise: number; learnTrace: number; cLearn: number; // 수명 내 학습(0=없음): 출력층 가중치를 에너지 변화로 조정(자식에게 물려주지 않음). 탐색 잡음·흔적 감쇠·유지비
   sweptAttack: boolean; // 연속 접촉 판정(기본 꺼짐): 공격을 한 틱 동안 입이 지나간 경로(선분) 위에서 판정한다. 꺼져 있으면 틱 끝 입 앞 한 지점만 본다
   weakSlow: number; // 약해진(굶은·다친) 개체의 속도 감소 강도(0=없음). 속도 한도 = vmax·(1−weakSlow·굶음)·(1−0.5·weakSlow·최근부상)
   dominance: number; // 먹이 경쟁 우위(0=없음): 근처에 질량 1.5배 이상의 배고픈 개체가 있으면 한 입 한도가 (1−dominance)배로 준다
@@ -49,7 +50,7 @@ export function defaultConfig(over: ConfigOverride = {}): Config {
   const c: Config = {
     w: 128, h: 96, seed: 1, initPop: 400,
     features: { brain: true, reproduce: true, attack: true, biomes: true, seasons: true, sexual: true, splitAttack: true },
-    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55, soilLoss: 0, meatBase: 0, dominance: 0, weakSlow: 0, sweptAttack: false,
+    pMax: 30, sunRate: 0.06, soilInit: 20, soilHalf: 20, soilShare: 0.55, soilLoss: 0, meatBase: 0, dominance: 0, weakSlow: 0, sweptAttack: false, learnRate: 0, learnNoise: 0.3, learnTrace: 0.9, cLearn: 0.002,
     senescence: 0, corpseDecay: 0.01, plantTempOpt: [18, 8, 28], plantTempWidth: 14,
     plantMin: 0.5, corpseMin: 1.0, offProfile: 0.4,
     meanTemp: 15, seasonAmp: 6, seasonPeriod: 1200, seasonGrowthAmp: 0.3,

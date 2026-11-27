@@ -10,7 +10,7 @@ function probe(w: World) {
   const inp = new Float64Array(NIN), hid = new Float64Array(NH), out = new Float64Array(NOUT);
   let aP = 0, nP = 0, aO = 0, nO = 0, sp = 0;
   for (const ind of w.inds) {
-    w.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out, !!w.cfg.features.neat);
+    w.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out, !!w.cfg.features.neat, ind.lw ?? null, null);
     if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { nP++; if (out[0] * inp[0] > 0) aP++; }
     if (inp[6] > 0 && Math.abs(inp[5]) > 0.05) { nO++; if (out[0] * inp[5] > 0) aO++; }
     sp += Math.max(0, out[1]);

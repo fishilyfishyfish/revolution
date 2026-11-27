@@ -145,3 +145,27 @@ describe('일시정지 중 개입과 사용자 지정 지도', () => {
     expect(e.inds.length).toBe(0);
   });
 });
+
+describe('수명 내 학습(learnRate)', () => {
+  const mkL = (seed: number, learnRate?: number) => World.create(defaultConfig({ w: 48, h: 36, seed, initPop: 120, ...(learnRate === undefined ? {} : { learnRate }) }));
+  it('0이면 기존과 같은 결과이고, 켜면 달라진다', () => {
+    expect(run(mkL(5), 300, {}).checksum()).toBe(run(mkL(5, 0), 300, {}).checksum());
+    expect(run(mkL(5, 0.05), 300, {}).checksum()).not.toBe(run(mkL(5, 0), 300, {}).checksum());
+  });
+  it('켜도 에너지 회계가 맞고(학습은 에너지를 만들지 않는다), 같은 시드는 같은 결과', () => {
+    const a = mkL(6, 0.05);
+    for (let i = 0; i < 400; i++) { const b = a.totalEnergy().total; stepSim(a); expect(Math.abs(a.totalEnergy().total - b - (a.tickIn - a.tickOut)) / Math.max(1, b)).toBeLessThan(1e-9); }
+    expect(run(mkL(6, 0.05), 400, {}).checksum()).toBe(a.checksum());
+  });
+  it('가중치 변화는 생기되 한도 안이고, 자식은 0에서 시작한다(물려주지 않는다)', () => {
+    const a = run(mkL(7, 0.1), 400, {});
+    let moved = 0; for (const i of a.inds) { if (i.lw) { let m = 0; for (const v of i.lw) { expect(Math.abs(v)).toBeLessThanOrEqual(2); m += Math.abs(v); } if (m > 0.01) moved++; } }
+    expect(moved).toBeGreaterThan(5);
+    const young = a.inds.filter((i) => i.age < 3 && i.lw); for (const i of young) { let m = 0; for (const v of i.lw!) m += Math.abs(v); expect(m).toBeLessThan(1); }
+  });
+  it('스냅샷에서 이어 돌려도 같다(학습 상태 포함)', () => {
+    const a = run(mkL(8, 0.05), 350, {}); const snap = serialize(a); run(a, 300, {});
+    const b = deserialize(snap); run(b, 300, {});
+    expect(b.checksum()).toBe(a.checksum());
+  });
+});
