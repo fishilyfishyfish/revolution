@@ -159,7 +159,10 @@ pre { white-space:pre-wrap; margin:4px 0; font-size:12px; }
     <div class="row"><label><input id="vshow" type="checkbox" checked /> 개체 표시</label></div>
   </aside>
   <aside id="filepanel" class="panel"><button class="closebtn">✕ 닫기</button>
-    <div id="filepanelbody"><h3>시작 생물종 (새 월드를 만들 때만 고름)</h3>
+    <div id="filepanelbody"><h3>시작 지형 (새 월드를 만들 때만)</h3>
+    <div class="row"><select id="terrainBase" title="어디서 시작해서 고칠지"><option value="auto">자동 생성 지형에서 고치기</option><option value="plain">빈 평지에서 그리기</option></select><button id="prepTerrain" title="생물 없이 지형만 먼저 만들어요. 칠하는 동안 시간은 흐르지 않아요">🗺 지형 직접 만들기</button></div>
+    <div id="prepBar" class="note" style="display:none"><b>지형 편집 중</b> — 왼쪽 도구(평지·물·산·바이옴)로 칠하세요. 시간은 흐르지 않아요. 다 됐으면 아래 버튼으로 이 지형에서 월드를 시작해요(시작 생물종·시드는 아래 설정 그대로).<div class="row"><button id="prepGo">▶ 이 지형으로 월드 시작</button><button id="prepCancel">취소(자동 지형으로 시작)</button></div></div>
+    <h3>시작 생물종 (새 월드를 만들 때만 고름)</h3>
     <div id="presets"></div>
     <div class="row"><label>물 비율</label><select id="water"><option value="0.2">적게 (호수)</option><option value="0.38">보통</option><option value="0.52">많게 (수중 세계)</option><option value="1.1">100% (바다만)</option></select></div>
     <div class="row"><label style="flex:1 1 auto" title="직전 틱의 은닉 노드 값을 다음 입력으로 다시 써요. 쫓던 것을 기억하는 뇌가 진화할 수 있어요"><input type="checkbox" id="memory" /> 🧠 기억 (되먹임 연결)</label></div>

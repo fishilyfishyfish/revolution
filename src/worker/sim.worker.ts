@@ -153,7 +153,8 @@ self.onmessage = (ev: MessageEvent<ToWorker>) => {
     case 'run': running = m.running; break;
     case 'speed': mult = m.mult; maxSpeed = m.max; renderOn = m.render; break;
     case 'step': if (world) { for (let i = 0; i < m.n; i++) stepSim(world); frame(); stats(); } break;
-    case 'iv': if (world) { world.intervene(m.iv); if (m.iv.kind === 'terrain' || m.iv.kind === 'biome' || m.iv.kind === 'food') mapsDirty = true; if (!running) { /* 일시정지 중에도 다음 틱에 적용되도록 한 틱만 진행하지 않음 */ } } break;
+    case 'iv': if (world) { world.intervene(m.iv); if (m.iv.kind === 'terrain' || m.iv.kind === 'biome' || m.iv.kind === 'food') mapsDirty = true; if (!running) { world.applyPending(); frame(); stats(); } /* 일시정지 중에는 틱을 올리지 않고 바로 적용해서 화면에 보여준다 */ } break;
+    case 'getMap': if (world) post({ t: 'map', terrain: Array.from(world.terrain), dom: Array.from(world.dom), zone: Array.from(world.zone) }); break;
     case 'getSnap': {
       if (!world) break;
       if (m.id === 0) post({ t: 'snap', id: 0, purpose: m.purpose, snap: serialize(world), iv: null });

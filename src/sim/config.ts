@@ -11,8 +11,10 @@ export interface Features {
   neat?: boolean;     // 뇌 구조 변이(NEAT식): 연결·노드 추가/제거 (옵션)
 }
 
+export interface CustomMap { terrain: number[]; dom: number[]; zone: number[] } // 월드를 만들 때만 쓰는 초기 지도(지형·바이옴). 만든 뒤에는 저장되지 않는다
+
 export interface Config {
-  w: number; h: number; seed: number; initPop: number; features: Features;
+  w: number; h: number; seed: number; initPop: number; features: Features; customMap?: CustomMap | null;
   // 식물/토양
   pMax: number; sunRate: number; soilInit: number; soilHalf: number; soilShare: number;
   dominance: number; // 먹이 경쟁 우위(0=없음): 근처에 질량 1.5배 이상의 배고픈 개체가 있으면 한 입 한도가 (1−dominance)배로 준다

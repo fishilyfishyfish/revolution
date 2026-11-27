@@ -13,6 +13,7 @@ export type ToWorker =
   | { t: 'saveNow' }
   | { t: 'inspect'; id: number }
   | { t: 'ancestry' }
+  | { t: 'getMap' }
   | { t: 'resend' };
 
 export interface FrameMsg {
@@ -43,7 +44,8 @@ export type FromWorker =
   | { t: 'snap'; id: number; purpose: string; snap: Snapshot; iv: Intervention | null }
   | { t: 'error'; msg: string }
   | { t: 'ancestry'; data: import('../sim/analysis').Ancestry; restarts: number[]; tick: number }
-  | { t: 'inspect'; data: InspectData | null };
+  | { t: 'inspect'; data: InspectData | null }
+  | { t: 'map'; terrain: number[]; dom: number[]; zone: number[] };
 
 export interface InspectData {
   id: number; alive: boolean; x: number; y: number; age: number; reserve: number; maxReserve: number; structE: number;

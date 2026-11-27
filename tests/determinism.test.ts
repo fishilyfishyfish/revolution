@@ -113,3 +113,35 @@ describe('실행 중 뇌 규칙 변경(neat/memory)', () => {
     expect(run(mk(4), 400, live).checksum()).not.toBe(run(mk(4), 400, {}).checksum());
   });
 });
+
+describe('일시정지 중 개입과 사용자 지정 지도', () => {
+  it('applyPending은 틱을 올리지 않고, 같은 개입을 다음 틱에 적용한 것과 결과가 같다', () => {
+    const iv: Intervention = { kind: 'terrain', shape: 'rect', x: 10, y: 5, x2: 20, y2: 20, r: 0, value: 1 };
+    const a = mk(11); run(a, 50, {});
+    const t0 = a.tick; a.intervene(iv); a.applyPending();
+    expect(a.tick).toBe(t0); expect(a.log.at(-1)?.tick).toBe(t0); expect(a.terrain[10 * a.w + 12]).toBe(1);
+    run(a, 100, {});
+    const b = mk(11); run(b, 50, {}); b.intervene(iv); run(b, 100, {}); // 기존 방식: 다음 step() 시작에서 적용
+    expect(a.checksum()).toBe(b.checksum());
+    const c = mk(11); for (const e of a.log) c.schedule(e.tick, e.iv); for (let i = 0; i < 150; i++) stepSim(c);
+    expect(c.checksum()).toBe(a.checksum());
+  });
+  it('customMap은 지형·바이옴을 그대로 쓰고, 개체는 물/산에 놓이지 않으며, 저장 설정에는 남지 않는다', () => {
+    const w0 = 48, h0 = 36, n = w0 * h0;
+    const terrain = new Array(n).fill(0), dom = new Array(n).fill(1), zone = new Array(n).fill(2);
+    for (let y = 0; y < h0; y++) for (let x = 0; x < w0; x++) { if (x >= 20 && x < 28) terrain[y * w0 + x] = 1; if (y < 3) terrain[y * w0 + x] = 2; }
+    const w = World.create(defaultConfig({ w: w0, h: h0, seed: 3, initPop: 80, customMap: { terrain, dom, zone } }));
+    for (let i = 0; i < n; i++) { expect(w.terrain[i]).toBe(terrain[i]); expect(w.dom[i]).toBe(1); expect(w.zone[i]).toBe(2); }
+    for (const i of w.inds) expect(w.terrain[(i.y | 0) * w0 + (i.x | 0)]).toBe(0);
+    expect(w.cfg.customMap).toBeNull();
+    expect(JSON.stringify(snapshotToJSON(serialize(w))).length).toBeLessThan(2_000_000);
+    for (let t = 0; t < 200; t++) { const b = w.totalEnergy().total; stepSim(w); expect(Math.abs(w.totalEnergy().total - b - (w.tickIn - w.tickOut)) / Math.max(1, b)).toBeLessThan(1e-9); }
+  });
+  it('지도를 주지 않으면 기존과 같은 결과이고, 생물 없는 준비 월드도 만들어진다', () => {
+    const a = World.create(defaultConfig({ w: 48, h: 36, seed: 4, initPop: 100 }));
+    const b = World.create(defaultConfig({ w: 48, h: 36, seed: 4, initPop: 100, customMap: null }));
+    expect(a.checksum()).toBe(b.checksum());
+    const e = World.create(defaultConfig({ w: 48, h: 36, seed: 4, founders: [] }));
+    expect(e.inds.length).toBe(0);
+  });
+});

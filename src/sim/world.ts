@@ -116,6 +116,7 @@ export class World {
     const cfg = defaultConfig(over);
     const w = new World(cfg);
     w.generate();
+    cfg.customMap = null; // 초기 조건으로 한 번만 쓴다(저장 파일이 커지지 않게)
     const founders = cfg.founders ?? [{ preset: 'herb', count: cfg.initPop }];
     let total = 0;
     for (const f of founders) total += w.seedIndividuals(f.count, true, f.preset);
@@ -142,15 +143,17 @@ export class World {
   generate() {
     const { cfg, w, h, n } = this;
     const nt1 = this.noiseField(18), nt2 = this.noiseField(14), nd = this.noiseField(26), nz = this.noiseField(20);
+    const cm = cfg.customMap && cfg.customMap.terrain.length === n ? cfg.customMap : null; // 사용자가 만든 초기 지도(난수는 위에서 똑같이 쓰므로 나머지 흐름은 같다)
     for (let i = 0; i < n; i++) {
       let t = T_PLAIN;
-      if (cfg.genTerrain) { if (nt1[i] < cfg.waterLevel) t = T_WATER; else if (nt2[i] > 0.82) t = T_MOUNTAIN; }
+      if (cm) t = cm.terrain[i] === T_WATER ? T_WATER : cm.terrain[i] === T_MOUNTAIN ? T_MOUNTAIN : T_PLAIN;
+      else if (cfg.genTerrain) { if (nt1[i] < cfg.waterLevel) t = T_WATER; else if (nt2[i] > 0.82) t = T_MOUNTAIN; }
       this.terrain[i] = t;
       if (cfg.features.biomes) {
-        this.dom[i] = Math.min(2, Math.floor(nd[i] * 3));
+        this.dom[i] = cm && cm.dom.length === n ? Math.min(2, Math.max(0, cm.dom[i] | 0)) : Math.min(2, Math.floor(nd[i] * 3));
         const y = Math.floor(i / w);
         const lat = (y / h) * 0.7 + nz[i] * 0.3;
-        this.zone[i] = Math.min(2, Math.floor(lat * 3));
+        this.zone[i] = cm && cm.zone.length === n ? Math.min(2, Math.max(0, cm.zone[i] | 0)) : Math.min(2, Math.floor(lat * 3));
       } else { this.dom[i] = 0; this.zone[i] = 1; }
       this.soil[i] = cfg.soilInit;
       if (t === T_PLAIN) this.plants[this.dom[i]][i] = cfg.pMax * cfg.initPlant;
@@ -511,15 +514,20 @@ export class World {
   private fillBuf = new Int32Array(0);
   private tmpFill(nb: number) { if (this.fillBuf.length < nb) this.fillBuf = new Int32Array(nb); return this.fillBuf; }
 
-  // ───────────── 한 틱 ─────────────
-  step() {
-    const cfg = this.cfg, rng = this.rng, F = cfg.features;
+  // 예약된 개입을 지금 적용한다(틱은 올리지 않는다). step()의 맨 앞과 같은 동작이라, 일시정지 중에 바로 적용해도 결과는 다음 틱 시작에서 적용한 것과 같다.
+  applyPending() {
     while (this.pending.length && this.pending[0].tick <= this.tick) {
       const e = this.pending.shift()!;
       if (this.onBeforeIntervention) this.onBeforeIntervention(e);
       this.applyIv(e.iv);
       this.log.push({ tick: this.tick, iv: e.iv });
     }
+  }
+
+  // ───────────── 한 틱 ─────────────
+  step() {
+    const cfg = this.cfg, rng = this.rng, F = cfg.features;
+    this.applyPending();
     this.updateEnv();
     this.tickIn = 0; this.tickOut = 0; this.costs.fill(0);
     this.born = [];

@@ -31,6 +31,7 @@ let lastFrame: FrameMsg | null = null;
 let branch: Branch | null = null;
 
 client.onMsg = (m: FromWorker) => {
+  if (m.t === 'map') { if (prepMode) { setPrep(false); newWorld({ terrain: m.terrain, dom: m.dom, zone: m.zone }); } return; }
   if (m.t === 'frame') { mv.setFrame(m); lastFrame = m; dirty = true; running = m.running; $('play').textContent = running ? '⏸ 일시정지' : '▶ 재생'; $('play').classList.toggle('on', !running);
     $('readout').textContent = `틱 ${m.tick} · 개체 ${m.pop} · ${m.tps.toFixed(0)} tick/s`; }
   else if (m.t === 'stats') {
@@ -75,7 +76,13 @@ $('play').onclick = () => { running = !running; client.send({ t: 'run', running 
 $('step').onclick = () => { client.send({ t: 'step', n: 1 }); };
 const DEF: Record<string, [boolean, number]> = { herb: [true, 300], omni: [false, 100], predator: [false, 25], fish: [false, 250], fishpred: [false, 20] };
 $('presets').innerHTML = PRESETS.map((p) => `<div class="row"><label style="flex:1 1 auto"><input type="checkbox" data-p="${p.name}" ${DEF[p.name][0] ? 'checked' : ''}/> ${p.icon} ${p.label}</label><input type="number" data-n="${p.name}" value="${DEF[p.name][1]}" min="1" max="800" style="width:70px"/></div>`).join('');
-function newWorld() {
+let prepMode = false;
+function setPrep(on: boolean) {
+  prepMode = on; $('prepBar').style.display = on ? '' : 'none';
+  ($('play') as HTMLButtonElement).disabled = on; ($('step') as HTMLButtonElement).disabled = on; ($('prepTerrain') as HTMLButtonElement).disabled = on;
+  if (on) (document.querySelector('#toolbtns [data-tool="terrain1"]') as HTMLButtonElement | null)?.click();
+}
+function newWorld(customMap?: { terrain: number[]; dom: number[]; zone: number[] } | null) {
   const seed = +($('seed') as HTMLInputElement).value || 1, stage = +($('stage') as HTMLSelectElement).value;
   const founders = PRESETS.filter((p) => ($('presets').querySelector(`[data-p=${p.name}]`) as HTMLInputElement).checked)
     .map((p) => ({ preset: p.name, count: Math.max(1, +($('presets').querySelector(`[data-n=${p.name}]`) as HTMLInputElement).value || 1) }));
@@ -83,9 +90,18 @@ function newWorld() {
   const waterLevel = +($('water') as HTMLSelectElement).value;
   hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
   ($('memoryLive') as HTMLInputElement).checked = ($('memory') as HTMLInputElement).checked; ($('neatLive') as HTMLInputElement).checked = ($('neat') as HTMLInputElement).checked;
-  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, restartOnExtinction: ($('respawn') as HTMLInputElement).checked, features: { neat: ($('neat') as HTMLInputElement).checked, memory: ($('memory') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
+  client.send({ t: 'init', seed, stage, cfg: { founders, waterLevel, customMap: customMap ?? null, restartOnExtinction: ($('respawn') as HTMLInputElement).checked, features: { neat: ($('neat') as HTMLInputElement).checked, memory: ($('memory') as HTMLInputElement).checked } } }); client.send({ t: 'run', running: true }); sendSpeed();
 }
-$('reset').onclick = newWorld;
+$('reset').onclick = () => { setPrep(false); newWorld(); };
+$('prepTerrain').onclick = () => { // 생물 없는 준비 월드: 칠하는 동안 시간이 흐르지 않는다
+  const seed = +($('seed') as HTMLInputElement).value || 1, stage = +($('stage') as HTMLSelectElement).value;
+  const plain = ($('terrainBase') as HTMLSelectElement).value === 'plain';
+  hist = { cols: [], rows: [] }; spHist = []; selected = -1; insp = null;
+  client.send({ t: 'init', seed, stage, cfg: { founders: [], genTerrain: !plain, waterLevel: +($('water') as HTMLSelectElement).value, restartOnExtinction: false } });
+  client.send({ t: 'run', running: false }); setPrep(true);
+};
+$('prepGo').onclick = () => client.send({ t: 'getMap' });
+$('prepCancel').onclick = () => { setPrep(false); newWorld(); };
 $('save').onclick = () => client.send({ t: 'getSnap', id: 0, purpose: 'save' });
 $('load').onclick = () => $('file').click();
 function fileMsg(text: string, bad = true) { const el = $('fileMsg'); el.textContent = text; el.style.color = bad ? 'var(--danger)' : 'var(--muted)'; }
@@ -158,7 +174,7 @@ function apply(x: number, y: number, first: boolean) {
   else if (first && tool === 'meteor') iv = { kind: 'meteor', x, y, r: Math.max(r, 3) };
   else if (first && tool === 'plague') iv = { kind: 'plague', x, y, r: Math.max(r, 2) };
   if (iv && first && (iv.kind === 'meteor' || iv.kind === 'plague')) { const T: Record<string, string> = { meteor: '☄️ 운석 투하', plague: '🦠 역병 방출', terrain: '지형 변경', biome: '바이옴 변경', food: '음식 배율 변경' }; toast(T[iv.kind] + ' · 직전 상태가 스냅샷으로 저장돼요'); }
-  if (iv) { client.send({ t: 'iv', iv }); if (!running) client.send({ t: 'step', n: 1 }); }
+  if (iv) client.send({ t: 'iv', iv }); // 일시정지 중이면 워커가 틱을 올리지 않고 바로 적용한다
 }
 canvas.onpointerdown = (e) => {
   const p = mv.toWorld(e);
@@ -284,7 +300,7 @@ function updateHud() {
   const season = ph < 0.125 || ph >= 0.875 ? '🌸 봄' : ph < 0.375 ? '☀️ 여름' : ph < 0.625 ? '🍂 가을' : '❄️ 겨울';
   const T = e.meanTemp + e.climShift + e.seasonAmp * Math.sin(2 * Math.PI * ph);
   const r = hist.rows[hist.rows.length - 1], nA = r ? r[hist.cols.indexOf('nA')] : 0, nB = r ? r[hist.cols.indexOf('nB')] : 0;
-  const ext = lastFrame.pop === 0 ? '💀 전멸 · ' : '';
+  const ext = lastFrame.pop === 0 ? (prepMode ? '🗺 지형 편집 중 · ' : '💀 전멸 · ') : '';
   $('hud').innerHTML = `${ext}${season} · ${T.toFixed(0)}℃ · 🧬 종 ${nA} <span title="(a) 게놈 거리 클러스터 / (b) 교배 가능 집단" style="opacity:.7">(교배집단 ${nB})</span>`;
 }
 // ── 개체 인스펙터 ──
