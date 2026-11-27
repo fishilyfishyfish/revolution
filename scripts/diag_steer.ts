@@ -8,15 +8,16 @@ const over = JSON.parse(arg('cfg', '{}')), seed = +arg('seed', '1'), ticks = +ar
 function probe(w: World) {
   w.buildHash();
   const inp = new Float64Array(NIN), hid = new Float64Array(NH), out = new Float64Array(NOUT);
-  let aP = 0, nP = 0, aO = 0, nO = 0, sp = 0;
+  let aP = 0, nP = 0, aO = 0, nO = 0, sp = 0, aG = 0, nG = 0, wsum = 0, nw = 0; const out2 = new Float64Array(NOUT);
   for (const ind of w.inds) {
     w.sense(ind, inp, false); brainForward(ind.genome, inp, hid, out, !!w.cfg.features.neat, ind.lw ?? null, null);
     if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { nP++; if (out[0] * inp[0] > 0) aP++; }
     if (inp[6] > 0 && Math.abs(inp[5]) > 0.05) { nO++; if (out[0] * inp[5] > 0) aO++; }
     sp += Math.max(0, out[1]);
+    if (ind.lw) { let m = 0; for (const v of ind.lw) m += Math.abs(v); wsum += m; nw++; if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { brainForward(ind.genome, inp, hid, out2, !!w.cfg.features.neat, null, null); nG++; if (out2[0] * inp[0] > 0) aG++; } }
   }
   const f = (a: number, n: number) => (n ? (a / n).toFixed(2) : '-');
-  return `식물쪽회전 ${f(aP, nP)}(${nP}) 개체쪽회전 ${f(aO, nO)}(${nO}) 평균가속 ${(sp / Math.max(1, w.inds.length)).toFixed(2)}`;
+  return `식물쪽회전 ${f(aP, nP)}(${nP}) 개체쪽회전 ${f(aO, nO)}(${nO}) 유전뇌만 식물쪽 ${f(aG, nG)} 평균|학습변화| ${nw ? (wsum / nw).toFixed(2) : '-'} 평균가속 ${(sp / Math.max(1, w.inds.length)).toFixed(2)}`;
 }
 const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...over, features: { ...STAGES[7], ...(over.features ?? {}) } }));
 let line = `${JSON.stringify(over)} s${seed}:`;
