@@ -19,9 +19,9 @@ for (const seed of seeds) {
   for (let t = 1; t <= ticks; t++) {
     stepSim(w);
     if (t % every === 0) {
-      const n = Math.max(1, w.inds.length); let dm = 0, sz = 0, g = 0, carn = 0;
-      for (const i of w.inds) { dm += i.t.diet[3]; sz += i.t.size; g += i.t.intakeMul; if (i.t.diet[3] > 0.5) carn++; }
-      line += ` [t${t / 1000}k 개체${w.inds.length} 크기${(sz / n).toFixed(2)} 고기식성${(dm / n).toFixed(2)} 육식${carn} 섭식배수${(g / n).toFixed(2)} 피식누적${w.cnt.eaten} 재시작${w.cnt.restarts} 토양${(w.totalEnergy().soil / 1000).toFixed(0)}k 식물${(w.totalEnergy().plants / 1000).toFixed(0)}k]`;
+      const n = Math.max(1, w.inds.length); let dm = 0, sz = 0, g = 0, carn = 0, omn = 0;
+      for (const i of w.inds) { dm += i.t.diet[3]; sz += i.t.size; g += i.t.intakeMul; if (i.t.diet[3] > 0.5) carn++; if (i.t.diet[3] > 0.2) omn++; }
+      line += ` [t${t / 1000}k 개체${w.inds.length} 크기${(sz / n).toFixed(2)} 고기식성${(dm / n).toFixed(2)} 육식${carn} 잡식이상${omn} 섭식배수${(g / n).toFixed(2)} 피식누적${w.cnt.eaten} 재시작${w.cnt.restarts} 토양${(w.totalEnergy().soil / 1000).toFixed(0)}k 식물${(w.totalEnergy().plants / 1000).toFixed(0)}k]`;
     }
   }
   console.log(line);
