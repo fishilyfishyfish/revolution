@@ -70,6 +70,7 @@ export class World {
   strain = 0.5; // 병원체 균주(0~1). 인구의 면역형 평균을 뒤따라 움직인다 (빈도 의존 선택)
   private prevP: Float64Array[] = [];
   // 장부
+  thinkHook: ((ind: Ind, inp: Float64Array, out: Float64Array) => void) | null = null;
   corpseIn = 0; corpseDec = 0; corpseEat = new Float64Array(3); plantEat = new Float64Array(3); // 진단용(결과에 영향 없음): 사체로 들어온 양 / 분해로 토양에 간 양 / 먹힌 양(먹는 개체 식성 구간별) / 식물로 먹힌 양
   biteN = new Float64Array(4); biteAvail = new Float64Array(4); biteGain = new Float64Array(4); // 진단용(결과에 영향 없음): 몸집 구간별 먹기 횟수 / 먹이 양에 막힌 횟수 / 얻은 에너지
   atkGain = new Float64Array(3); atkCost = new Float64Array(3); // 진단용(결과에 영향 없음): 공격자 식성 구간별로 얻은 에너지 / 낸 공격 노력 비용
@@ -545,6 +546,7 @@ export class World {
         this.sense(ind, this.inp, true);
         brainForward(ind.genome, this.inp, this.hid, this.out, !!F.neat);
         if (F.memory) { const lk = cfg.memLeak; for (let j = 0; j < NH; j++) ind.mem[j] += lk * (this.hid[j] - ind.mem[j]); } // 천천히 변하는 기억: 새 값 memLeak, 이전 기억 1−memLeak
+        if (this.thinkHook) this.thinkHook(ind, this.inp, this.out); // 진단용(기본 없음): 대조 실험에서 출력을 덮어쓰는 데만 쓴다
         const o = this.out;
         ind.oTurn = o[0]; ind.oAcc = o[1]; ind.oBite = o[2]; ind.oRep = o[3]; ind.oMate = o[4]; ind.oGuard = o[5]; ind.oRest = o[6]; ind.oAtk = o[7];
       } else { // 귀무 모형: 순수 난수 출력
