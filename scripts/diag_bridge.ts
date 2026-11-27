@@ -9,7 +9,7 @@ import { serialize, deserialize } from '../src/sim/snapshot';
 import { brainForward, NIN, NH, NOUT } from '../src/sim/genome';
 const mode = process.argv[2] ?? 'grad', seed = +(process.argv[3] ?? 1), ticks = +(process.argv[4] ?? 60000), every = +(process.argv[5] ?? 10000);
 const P = +(process.argv[6] ?? 0.25), RAMP = +(process.argv[7] ?? 40000);
-const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], features: { ...STAGES[7] } }));
+const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...JSON.parse(process.env.CFG ?? '{}'), features: { ...STAGES[7] } }));
 let a = (seed * 2654435761) >>> 0; const r = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const mask = new Uint8Array(w.n); for (let c = 0; c < w.n; c++) mask[c] = r() < P ? 1 : 0;
 const right = (c: number) => c % w.w >= w.w / 2;
@@ -30,7 +30,9 @@ function probe(world: World) {
     if (inp[1] > 0 && Math.abs(inp[0]) > 0.05) { s[side][1]++; if (out[0] * inp[0] > 0) s[side][0]++; }
   }
   const f = (v: number[]) => `${v[1] ? (v[0] / v[1]).toFixed(2) : '-'}(${v[1]}) 개체${v[2]}`;
-  return mode === 'half' ? `왼쪽(보통) ${f(s.L)} / 오른쪽(오아시스) ${f(s.R)}` : `식물쪽 ${f(s.L)}`;
+  let dm = 0, carn = 0, omn = 0; for (const i of world.inds) { dm += i.t.diet[3]; if (i.t.diet[3] > 0.5) carn++; else if (i.t.diet[3] > 0.2) omn++; }
+  const diet = ` 고기식성${(dm / Math.max(1, world.inds.length)).toFixed(2)} 잡식${omn} 육식${carn} 피식${world.cnt.eaten}`;
+  return (mode === 'half' ? `왼쪽(보통) ${f(s.L)} / 오른쪽(오아시스) ${f(s.R)}` : `식물쪽 ${f(s.L)}`) + diet;
 }
 let line = `${mode} s${seed} P${P}${mode === 'grad' ? ` RAMP${RAMP}` : ''}:`;
 for (let t = 1; t <= ticks; t++) {
