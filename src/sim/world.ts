@@ -70,6 +70,7 @@ export class World {
   strain = 0.5; // 병원체 균주(0~1). 인구의 면역형 평균을 뒤따라 움직인다 (빈도 의존 선택)
   private prevP: Float64Array[] = [];
   // 장부
+  corpseIn = 0; corpseDec = 0; corpseEat = new Float64Array(3); plantEat = new Float64Array(3); // 진단용(결과에 영향 없음): 사체로 들어온 양 / 분해로 토양에 간 양 / 먹힌 양(먹는 개체 식성 구간별) / 식물로 먹힌 양
   biteN = new Float64Array(4); biteAvail = new Float64Array(4); biteGain = new Float64Array(4); // 진단용(결과에 영향 없음): 몸집 구간별 먹기 횟수 / 먹이 양에 막힌 횟수 / 얻은 에너지
   atkGain = new Float64Array(3); atkCost = new Float64Array(3); // 진단용(결과에 영향 없음): 공격자 식성 구간별로 얻은 에너지 / 낸 공격 노력 비용
   dmgByClass = new Float64Array(9); // 진단용(결과에 영향 없음): [공격자 식성 구간*3 + 피해자 식성 구간]에 쌓은 피해량. 구간: 고기 식성 <0.2 / <0.5 / 그 이상
@@ -323,6 +324,7 @@ export class World {
     ind.alive = false;
     const c = this.cellOf(ind.x, ind.y);
     this.corpse[c] += ind.structE + (ind.reserve > 0 ? ind.reserve : 0);
+    this.corpseIn += ind.structE + (ind.reserve > 0 ? ind.reserve : 0);
     ind.structE = 0; ind.reserve = 0; // 에너지는 전부 사체로 이전됨
     this.lineage.die(ind.id, this.tick, cause);
     if (cause === CAUSE.STARVED) this.cnt.starved++;
@@ -774,6 +776,7 @@ export class World {
     if (gain > room) { sc *= room / gain; gain = room; }
     const take = A * sc;
     this.plants[0][c] -= a0 * sc; this.plants[1][c] -= a1 * sc; this.plants[2][c] -= a2 * sc; this.corpse[c] -= ac * sc;
+    { const ec = t.diet[3] < 0.2 ? 0 : t.diet[3] < 0.5 ? 1 : 2; this.corpseEat[ec] += ac * sc; this.plantEat[ec] += (a0 + a1 + a2) * sc; }
     { const sb = t.size < 0.8 ? 0 : t.size < 1.2 ? 1 : t.size < 1.7 ? 2 : 3; this.biteGain[sb] += gain; }
     ind.reserve += gain;
     this.soil[c] += take - gain; // 소화되지 않은 몫은 배설 → 토양
@@ -866,7 +869,7 @@ export class World {
     for (let c = 0; c < n; c++) {
       // 사체 분해 → 토양
       const cp = corpse[c];
-      if (cp > 0) { const d = cp * dec; corpse[c] = cp - d; soil[c] += d; }
+      if (cp > 0) { const d = cp * dec; corpse[c] = cp - d; soil[c] += d; this.corpseDec += d; }
       if (this.pathogen[c] > 0) { this.pathogen[c] *= pd; if (this.pathogen[c] < 0.01) this.pathogen[c] = 0; }
       const tr = this.terrain[c];
       if (tr === T_MOUNTAIN) continue;
