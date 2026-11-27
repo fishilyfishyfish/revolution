@@ -7,7 +7,7 @@ const seeds = (process.argv[2] ?? '1,2,3').split(',').map(Number), ticks = +(pro
 const SZ = process.argv[5] ? +process.argv[5] : undefined;
 if (SZ !== undefined) (PRESETS.find((p) => p.name === 'predator')!.traits as any).SIZE = SZ;
 for (const seed of seeds) {
-  const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }, { preset: 'predator', count: 40 }], features: { ...STAGES[7] } }));
+  const w = World.create(defaultConfig({ seed, founders: (process.env.FOUNDERS ?? 'herb:300,predator:40').split(',').map((x) => { const [preset, n] = x.split(':'); return { preset, count: +n }; }), features: { ...STAGES[7] } }));
   let line = `s${seed}:`; let eaten0 = 0, atkTicks = 0, atkN = 0, predTicks = 0;
   for (let t = 1; t <= ticks; t++) {
     stepSim(w);
