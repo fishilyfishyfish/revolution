@@ -33,7 +33,9 @@ function runOne(c: Record<string, number>, seed: number, ticks: number) {
   const persist = preds.filter((p, k) => p >= 5 && pops[k] >= 100).length / Math.max(1, preds.length);
   return { persist, maxPred: Math.max(...preds), lastPred: preds[preds.length - 1], pop: pops[pops.length - 1], meat: meat[meat.length - 1], restarts: w.cnt.restarts };
 }
-if (process.argv.includes('--summary')) {
+if (process.argv.includes('--print')) { // 설정 하나를 JSON으로 출력(재현용): --print --id 41 --n 60
+  const c = samples(+arg('n', '60'))[+arg('id', '0')]; const { predStart, ...cfg } = c; console.log(JSON.stringify({ cfg, predStart: predStart > 0.5 }));
+} else if (process.argv.includes('--summary')) {
   const dir = arg('summary', 'out/search'), n = +arg('n', '60'); const S = samples(n); const rows: any[] = [];
   for (let i = 0; i < n; i++) { const f = `${dir}_${i}.json`; if (existsSync(f)) { try { rows.push({ i, c: S[i], ...JSON.parse(readFileSync(f, 'utf8')) }); } catch { /* 미완료 */ } } }
   rows.sort((a, b) => b.score - a.score);
