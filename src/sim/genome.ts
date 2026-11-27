@@ -139,6 +139,7 @@ export function founderGenome(rng: Rng, base: Float32Array, out = new Float32Arr
 export interface Preset { name: string; label: string; icon: string; water: boolean; traits: Partial<Record<keyof typeof GENE, number>> }
 export const PRESETS: Preset[] = [
   { name: 'herb', label: '초식동물', icon: '🦌', water: false, traits: { ARMOR: 0.25, HEAR: 0.3 } },
+  { name: 'snail', label: '느린 초식(달팽이형)', icon: '🐌', water: false, traits: { SIZE: 0.05, VMAX: 0.06, VIS: 0.25, HEAR: 0.2, ARMOR: 0.8, CLUTCH: 0.6 } }, // 작고 느리고 단단한 풀 뜯는 동물. 껍질(방어)은 대사 +40%·이동 질량 +48%의 비용이 따른다
   { name: 'omni', label: '잡식동물', icon: '🐗', water: false, traits: { D0: 0.3, D1: 0.3, D2: 0.3, DM: 0.3, SIZE: 0.45 } },
   { name: 'predator', label: '육식동물', icon: '🐺', water: false, traits: { SIZE: 0.55, VMAX: 0.75, VIS: 0.65, ANG: 0.4, D0: 0.03, D1: 0.03, D2: 0.03, DM: 0.9, CLAW: 0.6, SMELL: 0.5 } },
   { name: 'fish', label: '물고기', icon: '🐟', water: true, traits: { SIZE: 0.12, VMAX: 0.5, VIS: 0.5, AQ: 0.95, D0: 0.03, D1: 0.03, D2: 0.8, DM: 0.14, CLUTCH: 0.6 } },

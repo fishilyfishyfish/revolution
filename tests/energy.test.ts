@@ -96,3 +96,15 @@ describe('약해진 개체의 감속(weakSlow)', () => {
     const e = mk(0); audit(e, 400); expect(c.checksum()).not.toBe(e.checksum()); // 켜면 같은 400틱 뒤 결과가 실제로 달라진다
   });
 });
+
+describe('느린 초식 프리셋(snail)', () => {
+  it('초식과 섞어 시작해도 회계가 맞고, 형질은 작고 느리고 단단하다', () => {
+    const w = World.create(defaultConfig({ w: 48, h: 36, seed: 8, founders: [{ preset: 'herb', count: 60 }, { preset: 'snail', count: 60 }, { preset: 'predator', count: 8 }], features: STAGES[7] }));
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+    const herb = w.inds.slice(0, 60), snail = w.inds.slice(60, 120);
+    expect(avg(snail.map((i) => i.t.vmax))).toBeLessThan(0.5 * avg(herb.map((i) => i.t.vmax)));
+    expect(avg(snail.map((i) => i.t.size))).toBeLessThan(avg(herb.map((i) => i.t.size)));
+    expect(avg(snail.map((i) => i.t.armor))).toBeGreaterThan(avg(herb.map((i) => i.t.armor)));
+    expect(audit(w, 300)).toBeLessThan(1e-9);
+  });
+});

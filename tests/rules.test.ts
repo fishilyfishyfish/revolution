@@ -104,7 +104,7 @@ describe('시작 생물종 프리셋 / 수중 생태계', () => {
     let waterPlants = 0; for (let c = 0; c < w.n; c++) if (w.terrain[c] === 1) waterPlants += w.plants[2][c];
     expect(waterPlants).toBeGreaterThan(0);
   });
-  it('프리셋 목록', () => { expect(PRESETS.map((p) => p.name)).toEqual(['herb', 'omni', 'predator', 'fish', 'fishpred']); void T_PLAIN; });
+  it('프리셋 목록', () => { expect(PRESETS.map((p) => p.name)).toEqual(['herb', 'snail', 'omni', 'predator', 'fish', 'fishpred']); void T_PLAIN; });
 });
 
 import { CAUSE } from '../src/sim/lineage';

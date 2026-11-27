@@ -74,7 +74,7 @@ function toastUnused(msg: string, ms = 2600) {
 }
 $('play').onclick = () => { if (prepMode) { client.send({ t: 'getMap' }); return; } running = !running; client.send({ t: 'run', running }); branch?.run(running); };
 $('step').onclick = () => { client.send({ t: 'step', n: 1 }); };
-const DEF: Record<string, [boolean, number]> = { herb: [true, 300], omni: [false, 100], predator: [false, 25], fish: [false, 250], fishpred: [false, 20] };
+const DEF: Record<string, [boolean, number]> = { herb: [true, 300], snail: [false, 200], omni: [false, 100], predator: [false, 25], fish: [false, 250], fishpred: [false, 20] };
 $('presets').innerHTML = PRESETS.map((p) => `<div class="row"><label style="flex:1 1 auto"><input type="checkbox" data-p="${p.name}" ${DEF[p.name][0] ? 'checked' : ''}/> ${p.icon} ${p.label}</label><input type="number" data-n="${p.name}" value="${DEF[p.name][1]}" min="1" max="800" style="width:70px"/></div>`).join('');
 let prepMode = false;
 function setPrep(on: boolean) {
