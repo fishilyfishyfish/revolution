@@ -9,7 +9,7 @@ import { serialize, deserialize } from '../src/sim/snapshot';
 import { brainForward, NIN, NH, NOUT } from '../src/sim/genome';
 const mode = process.argv[2] ?? 'grad', seed = +(process.argv[3] ?? 1), ticks = +(process.argv[4] ?? 60000), every = +(process.argv[5] ?? 10000);
 const P = +(process.argv[6] ?? 0.25), RAMP = +(process.argv[7] ?? 40000);
-const w = World.create(defaultConfig({ seed, founders: [{ preset: 'herb', count: 300 }], ...JSON.parse(process.env.CFG ?? '{}'), features: { ...STAGES[7] } }));
+const w = World.create(defaultConfig({ seed, founders: (process.env.FOUNDERS ?? 'herb:300').split(',').map((x) => { const [preset, n] = x.split(':'); return { preset, count: +n }; }), ...JSON.parse(process.env.CFG ?? '{}'), features: { ...STAGES[7] } }));
 let a = (seed * 2654435761) >>> 0; const r = () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const mask = new Uint8Array(w.n); for (let c = 0; c < w.n; c++) mask[c] = r() < P ? 1 : 0;
 const right = (c: number) => c % w.w >= w.w / 2;
